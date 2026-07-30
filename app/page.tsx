@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 interface Event {
   id: string;
-  name: string;
+  title: string;
   created_at?: string;
 }
 
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
     try {
       const { data, error } = await supabase
         .from('events')
-        .insert([{ name: eventName.trim() }])
+        .insert([{ title: eventName.trim() }])
         .select();
 
       if (error) {
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
                   <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
                     <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800">{event.name}</h3>
+                        <h3 className="text-xl font-semibold text-slate-800">{event.title}</h3>
                         <p className="text-xs text-slate-400 mt-0.5">ID: {event.id}</p>
                       </div>
                     </div>
