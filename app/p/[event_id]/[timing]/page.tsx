@@ -39,6 +39,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     setLoading(true);
 
     try {
+      // 領域ごとの平均点計算
       const getDomainMean = (indices: number[]) => {
         const sum = indices.reduce((acc, idx) => acc + (answers[idx] || 0), 0);
         return sum / indices.length;
@@ -56,30 +57,47 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       const submission_token = crypto.randomUUID();
 
-      // 同じ [イベントID, 参加者ID, 事前/事後] のデータがあればエラーにせず最新値で上書き（upsert）
+      // DBの q1 〜 q18 カラムに直接数値が入るようにオブジェクトを作成
+      const payload = {
+        event_id,
+        participant_id: participantId.trim(),
+        timing_type: timing,
+        display_language: 'bilingual',
+        q1: answers[0],
+        q2: answers[1],
+        q3: answers[2],
+        q4: answers[3],
+        q5: answers[4],
+        q6: answers[5],
+        q7: answers[6],
+        q8: answers[7],
+        q9: answers[8],
+        q10: answers[9],
+        q11: answers[10],
+        q12: answers[11],
+        q13: answers[12],
+        q14: answers[13],
+        q15: answers[14],
+        q16: answers[15],
+        q17: answers[16],
+        q18: answers[17],
+        domain_kaishoku,
+        domain_kaimin,
+        domain_kaido,
+        domain_kaisho,
+        domain_kairaku,
+        domain_kaisei,
+        total_sum,
+        total_mean,
+        submission_token
+      };
+
+      // 重複があれば上書き（upsert）して保存
       const { error } = await supabase
         .from('surveys')
-        .upsert(
-          {
-            event_id,
-            participant_id: participantId.trim(),
-            timing_type: timing,
-            display_language: 'bilingual',
-            answers,
-            domain_kaishoku,
-            domain_kaimin,
-            domain_kaido,
-            domain_kaisho,
-            domain_kairaku,
-            domain_kaisei,
-            total_sum,
-            total_mean,
-            submission_token
-          },
-          {
-            onConflict: 'event_id,participant_id,timing_type'
-          }
-        );
+        .upsert(payload, {
+          onConflict: 'event_id,participant_id,timing_type'
+        });
 
       if (error) {
         throw new Error(error.message);
