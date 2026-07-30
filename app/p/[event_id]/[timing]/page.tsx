@@ -39,7 +39,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     setLoading(true);
 
     try {
-      // 領域ごとの平均点計算
+      // 各領域の平均点計算
       const getDomainMean = (indices: number[]) => {
         const sum = indices.reduce((acc, idx) => acc + (answers[idx] || 0), 0);
         return sum / indices.length;
@@ -57,12 +57,13 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       const submission_token = crypto.randomUUID();
 
-      // DBの q1 〜 q18 カラムに直接数値が入るようにオブジェクトを作成
+      // DBの全対応カラム（q1〜q18, domain_..., answers）へ一元保存するペイロード
       const payload = {
         event_id,
         participant_id: participantId.trim(),
         timing_type: timing,
         display_language: 'bilingual',
+        answers,
         q1: answers[0],
         q2: answers[1],
         q3: answers[2],
@@ -92,7 +93,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         submission_token
       };
 
-      // 重複があれば上書き（upsert）して保存
+      // 重複時は上書き（upsert）
       const { error } = await supabase
         .from('surveys')
         .upsert(payload, {
