@@ -1,32 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
 
-  // URLからあらゆるパターンでIDを取得（[id], [participant_id], ?id=... など全て対応）
-  const paramValue = 
-    (params?.id as string) || 
-    (params?.participant_id as string) || 
-    searchParams.get('id') || 
-    searchParams.get('participant_id') || 
-    '';
-
+  // URLパラメータからID（メアド）を抽出
+  const rawId = (params?.id as string) || (params?.participant_id as string) || '';
+  
   let participantId = '';
   try {
-    const rawId = paramValue || '';
     participantId = decodeURIComponent(rawId);
-    // 二重エンコード対策
     if (participantId.includes('%')) {
       participantId = decodeURIComponent(participantId);
     }
   } catch (e) {
-    participantId = paramValue;
+    participantId = rawId;
   }
 
   const [surveys, setSurveys] = useState<any[]>([]);
@@ -34,10 +26,9 @@ export default function DashboardPage() {
   const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
-    // IDが取得できなかった場合
     if (!participantId) {
       setLoading(false);
-      setDebugInfo('URLから参加者ID（またはメールアドレス）を読み込めませんでした。URLをご確認ください。');
+      setDebugInfo('URLから参加者ID（またはメールアドレス）を読み込めませんでした。');
       return;
     }
 
@@ -46,7 +37,7 @@ export default function DashboardPage() {
       setDebugInfo('');
 
       try {
-        // ID（メアド または 仮ID）でSupabaseから検索
+        // メアド（または仮ID）でSupabaseから検索
         const { data, error } = await supabase
           .from('surveys')
           .select('*')
@@ -116,7 +107,6 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {preSurvey && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-50"></div>
                 <span className="text-xs font-bold text-blue-600 relative z-10">事前 (Pre)</span>
                 <p className="text-3xl font-black text-blue-900 mt-1 relative z-10">
                   {preSurvey.total_mean ? Number(preSurvey.total_mean).toFixed(2) : '0.00'}
@@ -129,7 +119,6 @@ export default function DashboardPage() {
             )}
             {postSurvey && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-xl relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 w-16 h-16 bg-green-100 rounded-full opacity-50"></div>
                 <span className="text-xs font-bold text-green-600 relative z-10">事後 (Post)</span>
                 <p className="text-3xl font-black text-green-900 mt-1 relative z-10">
                   {postSurvey.total_mean ? Number(postSurvey.total_mean).toFixed(2) : '0.00'}
