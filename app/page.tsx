@@ -199,6 +199,16 @@ export default function AdminDashboard() {
                             value={preUrl}
                             className="w-full text-xs bg-white p-2 rounded border border-slate-200 text-slate-600 font-mono"
                           />
+                          {/* 🔗 直リンクボタン */}
+                          <a
+                            href={preUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded font-medium whitespace-nowrap transition inline-flex items-center"
+                          >
+                            開く ↗
+                          </a>
+                          {/* 📋 コピーボタン */}
                           <button
                             onClick={() => handleCopy(preUrl, `${event.id}-pre`)}
                             className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded font-medium whitespace-nowrap"
@@ -218,6 +228,16 @@ export default function AdminDashboard() {
                             value={postUrl}
                             className="w-full text-xs bg-white p-2 rounded border border-slate-200 text-slate-600 font-mono"
                           />
+                          {/* 🔗 直リンクボタン */}
+                          <a
+                            href={postUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded font-medium whitespace-nowrap transition inline-flex items-center"
+                          >
+                            開く ↗
+                          </a>
+                          {/* 📋 コピーボタン */}
                           <button
                             onClick={() => handleCopy(postUrl, `${event.id}-post`)}
                             className="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded font-medium whitespace-nowrap"
