@@ -176,14 +176,14 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         throw profileError;
       }
 
-      // 2. 既に同じメールアドレスで「同じイベント」かつ「同じ時期（事前/事後）」のデータが存在する場合は古い方を削除して重複衝突を防ぐ
+      // 2. 既に同じメールアドレスで「同じイベント」かつ「同じ時期（事前/事後）」のデータが存在する場合は古い方を削除して重複衝突を防ぐ (.neq に修正)
       await supabase
         .from('surveys')
         .delete()
         .eq('event_id', surveyData.event_id)
         .eq('timing_type', surveyData.timing_type)
         .eq('participant_id', cleanEmail)
-        .ne('submission_token', submission_token);
+        .neq('submission_token', submission_token);
 
       // 3. 今回のアンケート回答データの participant_id をメアドに更新
       const { error: surveyError } = await supabase
