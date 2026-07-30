@@ -29,14 +29,14 @@ export default function SurveyFormPage({ params }: PageProps) {
     setLoading(true);
 
     try {
-      // surveys テーブルに回答データを保存する（※実際のカラム名に合わせて後で調整可能です）
+      // surveys テーブルに回答データを保存する
       const { error } = await supabase
         .from('surveys')
         .insert([
           {
             event_id: event_id,
             timing_type: timing,
-            content: answerText, // ← 追加：入力されたテキストを content 枠に保存する指示！
+            q1: answerText, // q1に回答テキストを入れる
           }
         ]);
 
