@@ -2,36 +2,62 @@
 
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
 
 export default function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   
-  // ★ URLエンコードされたIDを元の日本語（「ヒロトん」など）にデコードする
+  // URLエンコードされたIDを元の日本語にデコードする
   const rawId = resolvedParams.id || '';
-  const participantId = decodeURIComponent(rawId);
+  // ※二重にエンコードされているケースも考慮してtry-catchで安全にデコード
+  let participantId = '';
+  try {
+    participantId = decodeURIComponent(rawId);
+    // 二重エンコード対策 (例: %25E3%2583... になっている場合)
+    if (participantId.includes('%')) {
+      participantId = decodeURIComponent(participantId);
+    }
+  } catch (e) {
+    participantId = rawId;
+  }
 
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ用
 
   useEffect(() => {
-    if (!participantId) return;
+    if (!participantId) {
+      setLoading(false);
+      return;
+    }
 
     async function fetchUserData() {
       setLoading(true);
+      setDebugInfo('');
 
-      // デコードした participantId で検索
-      const { data, error } = await supabase
-        .from('surveys')
-        .select('*')
-        .eq('participant_id', participantId)
-        .order('created_at', { ascending: true });
+      try {
+        // デコードした participantId で検索
+        const { data, error } = await supabase
+          .from('surveys')
+          .select('*')
+          .eq('participant_id', participantId)
+          .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('データ取得エラー:', error);
-      } else if (data) {
-        setSurveys(data);
+        if (error) {
+          console.error('データ取得エラー:', error);
+          setDebugInfo(`DBエラー: ${error.message}`);
+        } else if (data) {
+          console.log("取得したデータ:", data); // コンソールでも確認可能に
+          setSurveys(data);
+          if (data.length === 0) {
+             setDebugInfo(`「${participantId}」で検索しましたが、データが0件でした。`);
+          }
+        }
+      } catch (err: any) {
+        setDebugInfo(`予期せぬエラー: ${err.message}`);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchUserData();
@@ -41,10 +67,10 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
   const postSurvey = surveys.find(s => s.timing_type === 'post');
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6 font-sans space-y-6">
+    <div className="max-w-4xl mx-auto p-4 md:p-6 font-sans space-y-6 bg-gray-50 min-h-screen">
       
       {/* ヘッダーカード */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex justify-between items-center">
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
             Well-being Timeline
@@ -53,7 +79,18 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
           {/* デコード後のIDを表示 */}
           <p className="text-sm text-gray-500 mt-1">ID: <span className="font-semibold text-gray-700">{participantId}</span></p>
         </div>
+        <Link href="/" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm text-sm transition-colors">
+          ＋ プライベートログを追加
+        </Link>
       </div>
+
+      {/* デバッグ情報 (データがない場合のヒント) */}
+      {debugInfo && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
+          <p className="text-sm text-yellow-700 font-bold">※開発者用メッセージ</p>
+          <p className="text-xs text-yellow-600 mt-1">{debugInfo}</p>
+        </div>
+      )}
 
       {/* スコア経時推移カード */}
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
@@ -68,20 +105,28 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {preSurvey && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <span className="text-xs font-bold text-blue-600">事前 (Pre)</span>
-                <p className="text-2xl font-black text-blue-900 mt-1">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl relative overflow-hidden">
+                <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-50"></div>
+                <span className="text-xs font-bold text-blue-600 relative z-10">事前 (Pre)</span>
+                <p className="text-3xl font-black text-blue-900 mt-1 relative z-10">
                   {preSurvey.total_mean ? Number(preSurvey.total_mean).toFixed(2) : '0.00'}
-                  <span className="text-xs text-gray-500 font-normal ml-1">/ 5.0</span>
+                  <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
+                </p>
+                <p className="text-xs text-gray-500 mt-2 relative z-10">
+                  合計: {preSurvey.total_sum} 点
                 </p>
               </div>
             )}
             {postSurvey && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-                <span className="text-xs font-bold text-green-600">事後 (Post)</span>
-                <p className="text-2xl font-black text-green-900 mt-1">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-xl relative overflow-hidden">
+                <div className="absolute -right-4 -top-4 w-16 h-16 bg-green-100 rounded-full opacity-50"></div>
+                <span className="text-xs font-bold text-green-600 relative z-10">事後 (Post)</span>
+                <p className="text-3xl font-black text-green-900 mt-1 relative z-10">
                   {postSurvey.total_mean ? Number(postSurvey.total_mean).toFixed(2) : '0.00'}
-                  <span className="text-xs text-gray-500 font-normal ml-1">/ 5.0</span>
+                  <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
+                </p>
+                 <p className="text-xs text-gray-500 mt-2 relative z-10">
+                  合計: {postSurvey.total_sum} 点
                 </p>
               </div>
             )}
@@ -97,21 +142,29 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
         {surveys.length > 0 ? (
           <ul className="divide-y divide-gray-100">
             {surveys.map((s) => (
-              <li key={s.id} className="py-3 flex justify-between items-center text-sm">
-                <div>
-                  <span className={`font-bold mr-2 ${s.timing_type === 'post' ? 'text-green-600' : 'text-blue-600'}`}>
-                    {s.timing_type === 'post' ? '[事後]' : '[事前]'}
-                  </span>
-                  <span className="text-gray-700">アンケート回答</span>
+              <li key={s.id} className="py-4 flex justify-between items-center text-sm hover:bg-gray-50 transition-colors px-2 rounded-lg -mx-2">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${s.timing_type === 'post' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                  <div>
+                    <span className={`font-bold mr-2 ${s.timing_type === 'post' ? 'text-green-700' : 'text-blue-700'}`}>
+                      {s.timing_type === 'post' ? '[事後]' : '[事前]'}
+                    </span>
+                    <span className="text-gray-700 font-medium">アンケート回答</span>
+                  </div>
                 </div>
-                <span className="text-xs text-gray-400">
-                  {new Date(s.created_at).toLocaleDateString()}
+                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-md">
+                  {new Date(s.created_at).toLocaleDateString('ja-JP')}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-center text-gray-400 py-8">履歴はありません。</p>
+          <div className="text-center py-8">
+            <div className="inline-block p-4 bg-gray-50 rounded-full mb-3">
+              <span className="text-2xl opacity-50">📝</span>
+            </div>
+            <p className="text-gray-400">履歴はありません。</p>
+          </div>
         )}
       </div>
 

@@ -202,8 +202,16 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     <div className="max-w-3xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
       
       {/* メッセージヘッダー */}
-      <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
-        <h1 className={`text-2xl font-bold mb-2 ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
+      <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
+        
+        {/* ★ここに追加：参加者IDの表示★ */}
+        <div className="absolute top-4 left-4">
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+            ID: {surveyData.participant_id}
+          </span>
+        </div>
+
+        <h1 className={`text-2xl font-bold mb-2 mt-4 ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
           {isPost ? '事後アンケート完了' : '事前アンケート完了'}
           <span className="block text-base font-normal mt-1 opacity-80">
             {isPost ? 'Post-event Survey Completed' : 'Pre-event Survey Completed'}
