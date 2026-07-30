@@ -47,7 +47,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setAccountEmail(participantId.includes('@') ? participantId : '');
         }
 
-        // 2. 該当ユーザーのアンケート履歴を取得（古 ➔ 新 の時系列順）
+        // 2. 該当ユーザーのアンケート履歴を取得（時系列順）
         let query = supabase.from('surveys').select('*');
         if (currentEmail) {
           query = query.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`);
@@ -58,7 +58,36 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         const { data: surveyLogs, error: surveyError } = await query.order('created_at', { ascending: true });
 
         if (!surveyError && surveyLogs) {
-          setSurveys(surveyLogs);
+          // 3. 各アンケートに対応するイベント情報を一括取得してイベント開催日を紐付け
+          const eventIds = Array.from(new Set(surveyLogs.map((s) => s.event_id).filter(Boolean)));
+          let eventsMap: Record<string, any> = {};
+
+          if (eventIds.length > 0) {
+            const { data: eventsData } = await supabase
+              .from('events')
+              .select('*')
+              .in('id', eventIds);
+
+            if (eventsData) {
+              eventsMap = eventsData.reduce((acc: any, ev: any) => {
+                acc[ev.id] = ev;
+                return acc;
+              }, {});
+            }
+          }
+
+          // event_date (または date) を優先使用し、なければ created_at でフォールバック
+          const enrichedSurveys = surveyLogs.map((s) => {
+            const ev = eventsMap[s.event_id];
+            const targetDate = ev?.event_date || ev?.date || s.created_at;
+            return {
+              ...s,
+              target_date: targetDate,
+              event_title: ev?.title || ev?.event_name || '',
+            };
+          });
+
+          setSurveys(enrichedSurveys);
         }
 
       } catch (err) {
@@ -83,20 +112,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre');
   const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post');
 
-  // 折れ線グラフ用のデータ整形（時系列順）
-  const chartData = surveys.map((s) => {
-    const d = new Date(s.created_at);
-    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
-    const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
-    return {
-      label: `${dateLabel} [${timingLabel}]`,
-      score: Number(Number(s.total_mean).toFixed(2)),
-      sum: s.total_sum,
-      timing: s.timing_type,
-    };
-  });
-
-  // 日付フォーマット用
+  // 日付フォーマットヘルパー
   const formatDateLabel = (dateStr?: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -108,6 +124,18 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     const d = new Date(dateStr);
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
   };
+
+  // 折れ線グラフ用のデータ整形（イベント開催日基準）
+  const chartData = surveys.map((s) => {
+    const dateLabel = formatDateLabel(s.target_date);
+    const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
+    return {
+      label: `${dateLabel} [${timingLabel}]`,
+      score: Number(Number(s.total_mean).toFixed(2)),
+      sum: s.total_sum,
+      timing: s.timing_type,
+    };
+  });
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
@@ -189,7 +217,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             {preSurvey ? (
               <>
                 <div className="inline-block bg-orange-100 text-orange-800 text-xs font-bold px-3 py-1 rounded-lg mb-4">
-                  📅 {formatDateLabel(preSurvey.created_at)} 事前 (Pre)
+                  📅 {formatDateLabel(preSurvey.target_date)} 事前 (Pre)
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black text-orange-900">
@@ -211,7 +239,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             {postSurvey ? (
               <>
                 <div className="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-lg mb-4">
-                  📅 {formatDateLabel(postSurvey.created_at)} 事後 (Post)
+                  📅 {formatDateLabel(postSurvey.target_date)} 事後 (Post)
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-black text-emerald-900">
@@ -253,11 +281,11 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     />
                     <div>
                       <div className="font-bold text-gray-800 text-sm">
-                        {formatDateLabel(survey.created_at)}{' '}
+                        {formatDateLabel(survey.target_date)}{' '}
                         <span className={isPostType ? 'text-emerald-600' : 'text-orange-600'}>
                           [{isPostType ? '事後' : '事前'}]
                         </span>{' '}
-                        アンケート回答
+                        {survey.event_title ? `${survey.event_title} ` : ''}アンケート回答
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         平均: {Number(survey.total_mean).toFixed(2)}点 / 合計: {survey.total_sum}点
@@ -266,7 +294,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   </div>
 
                   <span className="text-xs text-gray-400 bg-white px-3 py-1 rounded-md border border-gray-100 font-medium">
-                    {formatDateFull(survey.created_at)}
+                    {formatDateFull(survey.target_date)}
                   </span>
                 </div>
               );
