@@ -3,6 +3,18 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '../../../lib/supabase';
 import Link from 'next/link';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+// 折れ線グラフ用のカスタムドット（事前：オレンジ / 事後：緑）
+const CustomDot = (props: any) => {
+  const { cx, cy, payload } = props;
+  if (!cx || !cy) return null;
+  const isPost = payload.timing === 'post';
+  const color = isPost ? '#10b981' : '#f97316'; // 事後: エメラルドグリーン, 事前: オレンジ
+  return (
+    <circle cx={cx} cy={cy} r={6} fill={color} stroke="#ffffff" strokeWidth={2} />
+  );
+};
 
 export default function MyDashboardPage({ params }: { params: Promise<{ participant_id: string }> }) {
   const { participant_id: rawId } = use(params);
@@ -35,7 +47,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setAccountEmail(participantId.includes('@') ? participantId : '');
         }
 
-        // 2. 該当ユーザーのアンケート履歴を取得（IDまたはメールアドレスで検索）
+        // 2. 該当ユーザーのアンケート履歴を取得（古 ➔ 新 の時系列順）
         let query = supabase.from('surveys').select('*');
         if (currentEmail) {
           query = query.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`);
@@ -43,7 +55,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           query = query.eq('participant_id', participantId);
         }
 
-        const { data: surveyLogs, error: surveyError } = await query.order('created_at', { ascending: false });
+        const { data: surveyLogs, error: surveyError } = await query.order('created_at', { ascending: true });
 
         if (!surveyError && surveyLogs) {
           setSurveys(surveyLogs);
@@ -67,9 +79,22 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     );
   }
 
-  // 最新の事前・事後データ抽出
-  const preSurvey = surveys.find((s) => s.timing_type === 'pre');
-  const postSurvey = surveys.find((s) => s.timing_type === 'post');
+  // 最新の事前・事後データ
+  const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre');
+  const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post');
+
+  // 折れ線グラフ用のデータ整形（時系列順）
+  const chartData = surveys.map((s) => {
+    const d = new Date(s.created_at);
+    const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+    const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
+    return {
+      label: `${dateLabel} [${timingLabel}]`,
+      score: Number(Number(s.total_mean).toFixed(2)),
+      sum: s.total_sum,
+      timing: s.timing_type,
+    };
+  });
 
   // 日付フォーマット用
   const formatDateLabel = (dateStr?: string) => {
@@ -89,7 +114,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
       {/* 1. ヘッダーカード */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">
+          <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">
             Well-being Timeline
           </span>
           <h1 className="text-2xl font-bold text-gray-800 mt-2">
@@ -107,22 +132,67 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </button>
       </div>
 
-      {/* 2. 健幸度スコアの経時推移 */}
+      {/* 2. 健幸度スコアの経時推移（折れ線グラフ ＆ 最新カード） */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6">
         <h2 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-6">
           健幸度スコアの経時推移
         </h2>
 
+        {/* 📈 折れ線グラフ表示エリア */}
+        {chartData.length > 0 ? (
+          <div className="mb-8 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+            {/* 凡例（事前：オレンジ / 事後：緑） */}
+            <div className="flex items-center justify-center gap-6 mb-4 text-xs font-bold text-gray-600">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> 事前 (Pre)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> 事後 (Post)
+              </span>
+            </div>
+
+            <div className="w-full h-64 md:h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: -20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis 
+                    dataKey="label" 
+                    tick={{ fontSize: 11, fill: '#64748b' }} 
+                    interval={0}
+                    angle={-15}
+                    textAnchor="end"
+                  />
+                  <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <Tooltip 
+                    formatter={(value: any) => [`${value} 点`, '総合平均点']}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="score" 
+                    stroke="#cbd5e1" 
+                    strokeWidth={2.5} 
+                    strokeDasharray="4 4"
+                    dot={<CustomDot />}
+                    activeDot={{ r: 8 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 最新スコアサマリーカード */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 事前 (Pre) カード */}
-          <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-2xl">
+          {/* 最新事前 (Pre) カード：暖色オレンジ */}
+          <div className="bg-orange-50/50 border border-orange-100 p-5 rounded-2xl">
             {preSurvey ? (
               <>
-                <div className="inline-block bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-lg mb-4">
+                <div className="inline-block bg-orange-100 text-orange-800 text-xs font-bold px-3 py-1 rounded-lg mb-4">
                   📅 {formatDateLabel(preSurvey.created_at)} 事前 (Pre)
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-black text-blue-900">
+                  <span className="text-3xl font-black text-orange-900">
                     {Number(preSurvey.total_mean).toFixed(2)}
                   </span>
                   <span className="text-gray-500 text-sm font-medium">/ 5.0</span>
@@ -136,7 +206,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             )}
           </div>
 
-          {/* 事後 (Post) カード */}
+          {/* 最新事後 (Post) カード：緑 */}
           <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl">
             {postSurvey ? (
               <>
@@ -160,7 +230,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </div>
       </div>
 
-      {/* 3. アクティビティ・イベント履歴 */}
+      {/* 3. アクティビティ・イベント履歴（降順：最新が上） */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-6">
           アクティビティ・イベント履歴
@@ -168,7 +238,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
         {surveys.length > 0 ? (
           <div className="space-y-4">
-            {surveys.map((survey) => {
+            {[...surveys].reverse().map((survey) => {
               const isPostType = survey.timing_type === 'post';
               return (
                 <div
@@ -178,13 +248,13 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   <div className="flex items-center gap-3">
                     <span
                       className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                        isPostType ? 'bg-emerald-500' : 'bg-blue-500'
+                        isPostType ? 'bg-emerald-500' : 'bg-orange-500'
                       }`}
                     />
                     <div>
                       <div className="font-bold text-gray-800 text-sm">
                         {formatDateLabel(survey.created_at)}{' '}
-                        <span className={isPostType ? 'text-emerald-600' : 'text-blue-600'}>
+                        <span className={isPostType ? 'text-emerald-600' : 'text-orange-600'}>
                           [{isPostType ? '事後' : '事前'}]
                         </span>{' '}
                         アンケート回答
