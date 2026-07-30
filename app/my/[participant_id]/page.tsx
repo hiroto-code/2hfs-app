@@ -72,6 +72,14 @@ export default function DashboardPage() {
   const preSurvey = validSurveys.find(s => s.timing_type === 'pre');
   const postSurvey = validSurveys.find(s => s.timing_type === 'post');
 
+  // 最新の回答データからアンケート記入時のIDを取得
+  const latestSurvey = surveys[0];
+  const rawDisplayName = latestSurvey?.participant_id || participantId;
+  // メアド形式になっている場合は @ より前をニックネームとして表示
+  const displayName = rawDisplayName.includes('@') 
+    ? rawDisplayName.split('@')[0] 
+    : rawDisplayName;
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 font-sans space-y-6 bg-gray-50 min-h-screen">
       
@@ -81,9 +89,11 @@ export default function DashboardPage() {
           <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
             Well-being Timeline
           </span>
-          <h1 className="text-2xl font-bold text-gray-800 mt-2">マイダッシュボード</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mt-2">
+            {displayName ? `${displayName} さんのマイダッシュボード` : 'マイダッシュボード'}
+          </h1>
           <p className="text-sm text-gray-500 mt-1">
-            ID: <span className="font-semibold text-gray-700">{participantId || '(未指定)'}</span>
+            アカウント: <span className="font-semibold text-gray-700">{participantId || '(未指定)'}</span>
           </p>
         </div>
         <Link href="/" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm text-sm transition-colors">
@@ -101,7 +111,7 @@ export default function DashboardPage() {
       {/* スコア経時推移カード */}
       <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-          ウェルビーイング スコアの経時推移
+          健幸度スコアの経時推移
         </h2>
 
         {loading ? (
