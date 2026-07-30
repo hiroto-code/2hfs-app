@@ -1,203 +1,110 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
-import { supabase } from '../../../../lib/supabase';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
+import { useState, use } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export default function AdminEventSummaryPage({ params }: { params: Promise<{ event_id: string }> }) {
-  const { event_id } = use(params);
-  const [summary, setSummary] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+// URLのパラメータ（event_id と timing）を受け取るための型定義
+interface PageProps {
+  params: Promise<{
+    event_id: string;
+    timing: string;
+  }>;
+}
 
-  useEffect(() => {
-    const fetchEventData = async () => {
-      try {
-        const { data: surveys, error } = await supabase
-          .from('surveys')
-          .select('*')
-          .eq('event_id', event_id);
+export default function SurveyFormPage({ params }: PageProps) {
+  // Next.js の仕様に合わせて params を展開
+  const { event_id, timing } = use(params);
+  
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [answerText, setAnswerText] = useState('');
 
-        if (error) throw error;
+  // timing が 'pre' なら事前、それ以外（'post'）なら事後としてタイトルを出し分ける
+  const isPre = timing === 'pre';
+  const pageTitle = isPre ? '事前アンケート' : '事後アンケート';
 
-        if (!surveys || surveys.length === 0) {
-          setErrorMsg('該当するイベントのデータが存在しません。');
-          return;
-        }
+  // 送信ボタンを押したときの処理
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-        const preList = surveys.filter((s) => s.timing_type === 'pre');
-        const postList = surveys.filter((s) => s.timing_type === 'post');
+    try {
+      // surveys テーブルに回答データを保存する（※実際のカラム名に合わせて後で調整可能です）
+      const { error } = await supabase
+        .from('surveys')
+        .insert([
+          {
+            event_id: event_id,
+            // timing カラムがあればここで保存します
+            // timing: timing, 
+            // 自由記述などの回答データ（仮）
+            // content: answerText 
+          }
+        ]);
 
-        const calcAvg = (list: any[], key: string) => {
-          if (list.length === 0) return 0;
-          const sum = list.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
-          return Number((sum / list.length).toFixed(2));
-        };
+      if (error) throw error;
+      
+      // 送信成功したら完了画面に切り替え
+      setSubmitted(true);
+    } catch (err: any) {
+      alert('エラーが発生しました: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const domains = [
-          { key: 'domain_kaishoku', label: '快食', en: 'Enjoyable Eating' },
-          { key: 'domain_kaimin', label: '快眠', en: 'Restful Sleep' },
-          { key: 'domain_kaido', label: '快動', en: 'Comfortable Movement' },
-          { key: 'domain_kaisho', label: '快笑', en: 'Smiling & Laughter' },
-          { key: 'domain_kairaku', label: '快楽', en: 'Enjoyment' },
-          { key: 'domain_kaisei', label: '快生', en: 'Living Well' },
-        ];
-
-        const chartData = domains.map((d) => ({
-          subject: `${d.label}\n(${d.en})`,
-          preAvg: calcAvg(preList, d.key),
-          postAvg: calcAvg(postList, d.key),
-        }));
-
-        setSummary({
-          preCount: preList.length,
-          postCount: postList.length,
-          preTotalMean: calcAvg(preList, 'total_mean'),
-          postTotalMean: calcAvg(postList, 'total_mean'),
-          preTotalSum: calcAvg(preList, 'total_sum'),
-          postTotalSum: calcAvg(postList, 'total_sum'),
-          chartData,
-          domains: domains.map((d) => ({
-            ...d,
-            preAvg: calcAvg(preList, d.key),
-            postAvg: calcAvg(postList, d.key),
-            diff: (calcAvg(postList, d.key) - calcAvg(preList, d.key)).toFixed(2),
-          })),
-        });
-      } catch (err) {
-        console.error(err);
-        setErrorMsg('データ集計中にエラーが発生しました。');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEventData();
-  }, [event_id]);
-
-  if (loading) {
+  // 送信完了後の画面
+  if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl font-bold text-gray-600">集計中...</div>
-      </div>
-    );
-  }
-
-  if (errorMsg || !summary) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-red-100 text-red-700 p-6 rounded-xl font-bold text-center">
-          {errorMsg || 'データがありません。'}
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center max-w-md w-full">
+          <h2 className="text-xl font-bold text-slate-800 mb-2">送信完了</h2>
+          <p className="text-slate-600">アンケートにご協力いただき、ありがとうございました！</p>
         </div>
       </div>
     );
   }
 
-  const meanDiff = (summary.postTotalMean - summary.preTotalMean).toFixed(2);
-  const sumDiff = (summary.postTotalSum - summary.preTotalSum).toFixed(2);
-
+  // アンケート入力画面
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
-      {/* 管理画面ヘッダー */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6">
-        <div className="text-xs font-bold text-indigo-600 tracking-wider uppercase mb-1">
-          Event Analytics Summary
-        </div>
-        <h1 className="text-2xl font-black text-gray-800">
-          イベント全体集計結果
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">イベントID: {event_id}</p>
-      </div>
+    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 font-sans">
+      <div className="max-w-2xl mx-auto bg-white p-6 sm:p-10 rounded-xl shadow-sm border border-slate-200">
+        
+        <header className="border-b border-slate-100 pb-6 mb-6">
+          <span className="text-sm font-bold text-blue-600 tracking-wider">
+            {isPre ? 'PRE-SURVEY' : 'POST-SURVEY'}
+          </span>
+          <h1 className="text-2xl font-bold text-slate-800 mt-1">{pageTitle}</h1>
+          <p className="text-slate-500 text-sm mt-2 text-gray-500">
+            イベントID: <span className="font-mono text-xs">{event_id}</span>
+          </p>
+        </header>
 
-      {/* サマリー数値カード */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center">
-          <div className="text-xs font-bold text-gray-400 mb-1">回答件数 (Responses)</div>
-          <div className="text-xl font-black text-gray-800">
-            事前: <span className="text-blue-600">{summary.preCount}</span> 件 / 事後: <span className="text-green-600">{summary.postCount}</span> 件
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 仮の質問項目 */}
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              ご意見・ご感想をお聞かせください
+            </label>
+            <textarea
+              value={answerText}
+              onChange={(e) => setAnswerText(e.target.value)}
+              rows={5}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+              placeholder="ここに入力してください..."
+              required
+            />
           </div>
-        </div>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center">
-          <div className="text-xs font-bold text-gray-400 mb-1">全体平均点 (Total Mean)</div>
-          <div className="text-xl font-black text-gray-800">
-            {summary.preTotalMean.toFixed(2)} ▶ <span className="text-green-600">{summary.postTotalMean.toFixed(2)}</span>
-            <span className="text-sm font-bold text-emerald-500 ml-2">
-              ({Number(meanDiff) >= 0 ? `+${meanDiff}` : meanDiff})
-            </span>
-          </div>
-        </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50"
+          >
+            {loading ? '送信中...' : 'アンケートを送信する'}
+          </button>
+        </form>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 text-center">
-          <div className="text-xs font-bold text-gray-400 mb-1">全体合計点 (Total Sum)</div>
-          <div className="text-xl font-black text-gray-800">
-            {summary.preTotalSum.toFixed(1)} ▶ <span className="text-green-600">{summary.postTotalSum.toFixed(1)}</span>
-            <span className="text-sm font-bold text-emerald-500 ml-2">
-              ({Number(sumDiff) >= 0 ? `+${sumDiff}` : sumDiff})
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 全体平均 レーダーチャート */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-6">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-3 text-center">
-          全体平均スコア比較（事前 vs 事後）
-        </h2>
-
-        <div className="w-full h-[380px] md:h-[420px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="48%" data={summary.chartData}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="subject" />
-              <PolarRadiusAxis angle={90} domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} stroke="none" />
-              <Legend verticalAlign="bottom" height={36} />
-              
-              <Radar
-                name="事前全体平均 (Pre Group)"
-                dataKey="preAvg"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                fill="#3b82f6"
-                fillOpacity={0.15}
-              />
-              <Radar
-                name="事後全体平均 (Post Group)"
-                dataKey="postAvg"
-                stroke="#10b981"
-                strokeWidth={2.5}
-                fill="#10b981"
-                fillOpacity={0.25}
-              />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* 領域別詳細リスト */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-        <h2 className="text-lg font-bold text-gray-800 mb-4 border-b pb-3">
-          領域別平均スコア推移
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {summary.domains.map((item: any) => (
-            <div key={item.key} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="font-bold text-gray-800">{item.label}</div>
-              <div className="text-xs text-gray-400 mb-3">{item.en}</div>
-              
-              <div className="flex justify-between items-baseline">
-                <div className="text-xs text-gray-500">事前: <span className="font-bold">{item.preAvg.toFixed(2)}</span></div>
-                <div className="text-sm text-gray-400">▶</div>
-                <div className="text-sm text-green-600 font-bold">事後: <span className="text-base font-black">{item.postAvg.toFixed(2)}</span></div>
-              </div>
-
-              <div className="mt-2 text-right text-xs font-bold text-emerald-600">
-                変化幅: {Number(item.diff) >= 0 ? `+${item.diff}` : item.diff}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
