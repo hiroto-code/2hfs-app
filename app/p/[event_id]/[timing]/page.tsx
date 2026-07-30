@@ -1,177 +1,193 @@
 'use client';
 
 import { useState, use } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { domainQuestions, scaleOptions } from '@/lib/questions';
 
-interface PageProps {
-  params: Promise<{
-    event_id: string;
-    timing: string;
-  }>;
-}
-
-// 2HFS / SFHS 評価質問項目
-const QUESTIONS = [
-  { id: 'q1', text: '1. 全般的に見て、あなたの健康状態はいかがですか？' },
-  { id: 'q2', text: '2. 普段の活動（家事、仕事、運動など）に支障を感じることがありますか？' },
-  { id: 'q3', text: '3. 最近、身体的な問題のためにやりたいことができないことがありましたか？' },
-  { id: 'q4', text: '4. 最近、気分や感情の問題（不安や落ち込みなど）のために支障がありましたか？' },
-  { id: 'q5', text: '5. 痛みによって、日常の生活や仕事が妨げられることがありましたか？' },
-];
-
-// 選択肢（1: 全くない 〜 5: 非常にある / 非常に良い）
-const OPTIONS = [
-  { label: '1 (該当しない / 非常に良い)', value: 1 },
-  { label: '2 (少しある / 良い)', value: 2 },
-  { label: '3 (普通)', value: 3 },
-  { label: '4 (かなりある / 悪い)', value: 4 },
-  { label: '5 (非常にある / 非常に悪い)', value: 5 },
-];
-
-export default function SurveyFormPage({ params }: PageProps) {
+export default function SurveyPage({ params }: { params: Promise<{ event_id: string; timing: string }> }) {
   const { event_id, timing } = use(params);
-  
+  const router = useRouter();
+
+  const [participantId, setParticipantId] = useState('');
+  const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  
-  // 各質問の回答を保持（初期値は未選択）
-  const [answers, setAnswers] = useState<{ [key: string]: number }>({});
-  // 自由記述用の入力値
-  const [comments, setComments] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const isPre = timing === 'pre';
-  const pageTitle = isPre ? '事前アンケート（SHFS評価）' : '事後アンケート（SHFS評価）';
+  const isPost = timing === 'post';
 
-  // ラジオボタン変更時の処理
-  const handleOptionChange = (questionId: string, value: number) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+  const handleScoreChange = (qIndex: number, val: number) => {
+    setAnswers(prev => ({ ...prev, [qIndex]: val }));
   };
 
-  // 送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
 
-    // 未回答のチェック
-    for (const q of QUESTIONS) {
-      if (!answers[q.id]) {
-        alert(`${q.text} の回答を選択してください。`);
-        return;
-      }
+    if (!participantId.trim()) {
+      setErrorMsg('参加者ID（またはお名前・ニックネーム）を入力してください。 / Please enter your Participant ID.');
+      return;
+    }
+
+    if (Object.keys(answers).length < 18) {
+      setErrorMsg('すべての質問（18問）にお答えください。 / Please answer all 18 questions.');
+      return;
     }
 
     setLoading(true);
 
     try {
-      // データベースに q1, q2, q3... の値を正しく送信
-      const { error } = await supabase
-        .from('surveys')
-        .insert([
-          {
-            event_id: event_id,
-            timing_type: timing,
-            q1: answers['q1'],
-            q2: answers['q2'],
-            q3: answers['q3'],
-            q4: answers['q4'],
-            q5: answers['q5'],
-            content: comments, // 自由記述欄の文字
-          }
-        ]);
+      const getDomainMean = (indices: number[]) => {
+        const sum = indices.reduce((acc, idx) => acc + (answers[idx] || 0), 0);
+        return sum / indices.length;
+      };
+
+      const domain_kaishoku = getDomainMean([0, 1, 2]);
+      const domain_kaimin = getDomainMean([3, 4, 5]);
+      const domain_kaido = getDomainMean([6, 7, 8]);
+      const domain_kaisho = getDomainMean([9, 10, 11]);
+      const domain_kairaku = getDomainMean([12, 13, 14]);
+      const domain_kaisei = getDomainMean([15, 16, 17]);
+
+      const total_sum = Object.values(answers).reduce((acc, cur) => acc + cur, 0);
+      const total_mean = total_sum / 18;
+
+      const submission_token = crypto.randomUUID();
+
+      const { error } = await supabase.from('surveys').insert({
+        event_id,
+        participant_id: participantId.trim(),
+        timing_type: timing,
+        display_language: 'bilingual',
+        answers,
+        domain_kaishoku,
+        domain_kaimin,
+        domain_kaido,
+        domain_kaisho,
+        domain_kairaku,
+        domain_kaisei,
+        total_sum,
+        total_mean,
+        submission_token
+      });
 
       if (error) throw error;
-      
-      setSubmitted(true);
+
+      router.push(`/result/${submission_token}`);
+
     } catch (err: any) {
-      alert('エラーが発生しました: ' + err.message);
-    } finally {
+      console.error(err);
+      setErrorMsg('送信に失敗しました: ' + (err.message || '通信エラー'));
       setLoading(false);
     }
   };
 
-  // 送信完了画面
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 text-center max-w-md w-full">
-          <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">✓</div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">回答ありがとうございました</h2>
-          <p className="text-slate-600 text-sm">アンケートの送信が正常に完了いたしました。</p>
-        </div>
-      </div>
-    );
-  }
-
-  // アンケートフォーム画面
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 font-sans">
-      <div className="max-w-2xl mx-auto bg-white p-6 sm:p-10 rounded-xl shadow-sm border border-slate-200">
-        
-        <header className="border-b border-slate-100 pb-6 mb-6">
-          <span className="text-xs font-bold bg-blue-100 text-blue-700 px-3 py-1 rounded-full tracking-wider">
-            {isPre ? '事前調査' : '事後調査'}
+    <div className="max-w-2xl mx-auto p-4 md:p-6 font-sans bg-gray-50 min-h-screen">
+      
+      {/* ヘッダー */}
+      <div className={`p-6 rounded-2xl shadow-sm border mb-6 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
+        <h1 className={`text-2xl font-bold ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
+          {isPost ? '事後アンケート' : '事前アンケート'}
+          <span className="block text-sm font-normal mt-1 text-gray-500">
+            {isPost ? 'Post-event Survey' : 'Pre-event Survey'}
           </span>
-          <h1 className="text-2xl font-bold text-slate-800 mt-3">{pageTitle}</h1>
-          <p className="text-slate-500 text-xs mt-1">
-            イベントID: <span className="font-mono">{event_id}</span>
-          </p>
-        </header>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* 評価質問グループ */}
-          {QUESTIONS.map((q) => (
-            <div key={q.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-              <label className="block text-sm font-bold text-slate-800 mb-3">
-                {q.text} <span className="text-red-500">*</span>
-              </label>
-              <div className="space-y-2">
-                {OPTIONS.map((opt) => (
-                  <label
-                    key={opt.value}
-                    className={`flex items-center p-3 rounded-lg border cursor-pointer transition ${
-                      answers[q.id] === opt.value
-                        ? 'bg-blue-50 border-blue-500 text-blue-900 font-medium'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={q.id}
-                      value={opt.value}
-                      checked={answers[q.id] === opt.value}
-                      onChange={() => handleOptionChange(q.id, opt.value)}
-                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 mr-3"
-                    />
-                    <span className="text-sm">{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* 自由記述欄 */}
-          <div className="pt-2">
-            <label className="block text-sm font-bold text-slate-700 mb-2">
-              その他、ご意見・ご感想（自由記述）
-            </label>
-            <textarea
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={4}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm"
-              placeholder="気になる点や補足事項があればご記入ください（任意）"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-lg transition shadow-md disabled:opacity-50 text-base"
-          >
-            {loading ? '送信処理中...' : '回答を送信する'}
-          </button>
-        </form>
-
+        </h1>
+        <p className="text-xs md:text-sm text-gray-600 mt-3">
+          直近のあなたの状態について、最もあてはまるものを直感でお選びください。
+          <span className="block text-xs text-gray-400 mt-0.5">Please intuitively select the option that best describes your recent state.</span>
+        </p>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {/* 参加者ID入力エリア */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+          <label className="block text-sm font-bold text-gray-800 mb-1">
+            参加者ID（またはお名前・ニックネーム） <span className="text-red-500">*</span>
+            <span className="block text-xs font-normal text-gray-500">Participant ID / Name</span>
+          </label>
+          <input
+            type="text"
+            required
+            value={participantId}
+            onChange={(e) => setParticipantId(e.target.value)}
+            placeholder="例: yamada123"
+            className="w-full mt-2 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+          />
+          <p className="text-xs text-gray-400 mt-1">※事前・事後で同じIDをご入力ください。</p>
+        </div>
+
+        {/* 質問リスト */}
+        {domainQuestions.map((group) => (
+          <div key={group.domainKey} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200">
+            <h2 className="text-lg font-bold text-blue-900 border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
+              <span>{group.domainJa}</span>
+              <span className="text-xs font-normal text-gray-400">/ {group.domainEn}</span>
+            </h2>
+
+            <div className="space-y-6">
+              {group.items.map((item) => {
+                const qNum = item.index + 1;
+                return (
+                  <div key={item.index} className="space-y-2">
+                    <p className="font-bold text-gray-800 text-sm md:text-base leading-snug">
+                      Q{qNum}. {item.textJa}
+                      <span className="block text-xs font-normal text-gray-500 mt-0.5">{item.textEn}</span>
+                    </p>
+
+                    {/* 1〜5の選択肢ボタン（スマホ最適化） */}
+                    <div className="grid grid-cols-5 gap-1 md:gap-2 pt-1">
+                      {scaleOptions.map((opt) => {
+                        const isSelected = answers[item.index] === opt.val;
+                        return (
+                          <button
+                            key={opt.val}
+                            type="button"
+                            onClick={() => handleScoreChange(item.index, opt.val)}
+                            className={`flex flex-col items-center justify-between p-1.5 md:p-2.5 rounded-xl border transition-all text-center ${
+                              isSelected
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
+                                : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                            }`}
+                          >
+                            <span className="text-base md:text-lg font-black leading-none mb-1">{opt.val}</span>
+                            <span className="text-[10px] md:text-xs font-medium leading-tight block w-full break-all">
+                              {opt.ja}
+                            </span>
+                            <span className={`text-[8px] md:text-[10px] leading-tight block w-full mt-0.5 opacity-80 ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                              {opt.en}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* エラーメッセージ */}
+        {errorMsg && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm font-bold text-center">
+            {errorMsg}
+          </div>
+        )}
+
+        {/* 送信ボタン */}
+        <button
+          type="submit"
+          disabled={loading}
+          className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-md transition-all ${
+            isPost ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+          } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          {loading ? '送信中... / Submitting...' : isPost ? '事後アンケートを送信する' : '事前アンケートを送信する'}
+        </button>
+
+      </form>
     </div>
   );
 }
