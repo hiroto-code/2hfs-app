@@ -137,7 +137,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     fetchResult();
   }, [submission_token]);
 
-  // メールアドレス登録処理
+  // メールアドレス登録処理（メアドを軸としてIDを統合・上書きする）
   const handleRegisterEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !surveyData) return;
@@ -146,19 +146,48 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     setRegError("");
 
     try {
-      const { error } = await supabase.from('user_profiles').upsert(
+      const cleanEmail = email.trim().toLowerCase();
+
+      // 1. user_profiles にメアドを保存（存在すれば更新）
+      const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
-          participant_id: surveyData.participant_id,
-          email: email.trim().toLowerCase(),
+          participant_id: cleanEmail,
+          email: cleanEmail,
         },
         { onConflict: 'email' }
       );
 
-      if (error) throw error;
+      if (profileError) {
+        console.error("Profile Error:", profileError);
+        throw profileError;
+      }
+
+      // 2. 今回のアンケート回答データの participant_id をメアドに上書き
+      const { error: surveyError } = await supabase
+        .from('surveys')
+        .update({ participant_id: cleanEmail })
+        .eq('submission_token', submission_token);
+
+      if (surveyError) {
+        console.error("Survey Update Error:", surveyError);
+        throw surveyError;
+      }
+
+      // 3. 元の仮ID（例: ヒロトん）で登録されていた過去データもすべてメアドIDに一括統合
+      if (surveyData.participant_id && surveyData.participant_id !== cleanEmail) {
+        await supabase
+          .from('surveys')
+          .update({ participant_id: cleanEmail })
+          .eq('participant_id', surveyData.participant_id);
+      }
+
+      // 画面上のデータも最新（メアド）に更新
+      setSurveyData((prev: any) => ({ ...prev, participant_id: cleanEmail }));
       setIsRegistered(true);
+
     } catch (err: any) {
-      console.error(err);
-      setRegError("登録に失敗しました。別のメールアドレスをお試しください。");
+      console.error("Register catch error:", err);
+      setRegError(`登録エラー: ${err.message || '別のメールアドレスでお試しください。'}`);
     } finally {
       setRegistering(false);
     }
@@ -204,7 +233,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       {/* メッセージヘッダー */}
       <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
         
-        {/* ★ここに追加：参加者IDの表示★ */}
+        {/* 参加者ID（または統合後のメアド）の表示 */}
         <div className="absolute top-4 left-4">
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
             ID: {surveyData.participant_id}
@@ -357,17 +386,17 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 {registering ? '保存中...' : 'スコアを保存して登録'}
               </button>
             </form>
-            {regError && <p className="text-xs text-red-500 mt-2">{regError}</p>}
+            {regError && <p className="text-xs text-red-500 mt-2 font-bold">{regError}</p>}
           </div>
         ) : (
           <div className="text-center py-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full mb-3 text-xl">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full mb-3 text-xl font-bold">
               ✓
             </div>
-            <h3 className="text-lg font-bold text-gray-800 mb-1">スコアが保存されました！</h3>
+            <h3 className="text-lg font-bold text-gray-800 mb-1">スコアが保存・統合されました！</h3>
             <p className="text-sm text-gray-500 mb-4">マイページから過去の経時ログやイベント記録を確認できます。</p>
             <Link
-              href={`/my/${surveyData.participant_id}`}
+              href={`/my/${encodeURIComponent(surveyData.participant_id)}`}
               className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl shadow-sm text-sm transition-colors"
             >
               あなたのマイページを開く ▶
