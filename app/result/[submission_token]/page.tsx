@@ -47,6 +47,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   const [surveyData, setSurveyData] = useState<any>(null);
   const [preSurveyData, setPreSurveyData] = useState<any>(null);
   const [groupAvgData, setGroupAvgData] = useState<any>(null);
+  const [displayName, setDisplayName] = useState<string>(''); // 表示用ニックネーム
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -75,16 +76,26 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        // 既にメール登録済みかチェック
+        // 既にメール登録済みか、プロフィール情報をチェック
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('participant_id', currentData.participant_id)
+          .or(`participant_id.eq.${currentData.participant_id},email.eq.${currentData.participant_id}`)
           .maybeSingle();
 
         if (profile) {
           setIsRegistered(true);
-          setEmail(profile.email);
+          setEmail(profile.email || '');
+          // 保存された表示用ニックネームがあれば採用、無ければメールアドレス以外の文字を抽出
+          if (profile.display_name) {
+            setDisplayName(profile.display_name);
+          } else if (!currentData.participant_id.includes('@')) {
+            setDisplayName(currentData.participant_id);
+          } else {
+            setDisplayName(currentData.participant_id.split('@')[0]);
+          }
+        } else {
+          setDisplayName(currentData.participant_id);
         }
 
         // 2. 本人の事前データを取得（事後アンケートの場合）
@@ -137,7 +148,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     fetchResult();
   }, [submission_token]);
 
-  // メールアドレス登録処理（メアドを軸としてIDを統合・上書きする）
+  // メールアドレス登録処理（メアドを軸としてIDを統合・上書きするが、ニックネームは保持する）
   const handleRegisterEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !surveyData) return;
@@ -148,11 +159,15 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     try {
       const cleanEmail = email.trim().toLowerCase();
 
-      // 1. user_profiles にメアドを保存（存在すれば更新）
+      // 現在表示されているニックネーム（メアドでなければそのまま利用）
+      const nicknameToSave = displayName && !displayName.includes('@') ? displayName : displayName.split('@')[0];
+
+      // 1. user_profiles にメアドと表示名(display_name)を保存
       const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
           participant_id: cleanEmail,
           email: cleanEmail,
+          display_name: nicknameToSave,
         },
         { onConflict: 'email' }
       );
@@ -162,7 +177,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         throw profileError;
       }
 
-      // 2. 今回のアンケート回答データの participant_id をメアドに上書き
+      // 2. 今回のアンケート回答データの participant_id をメアドに上書き（統合用）
       const { error: surveyError } = await supabase
         .from('surveys')
         .update({ participant_id: cleanEmail })
@@ -181,8 +196,9 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           .eq('participant_id', surveyData.participant_id);
       }
 
-      // 画面上のデータも最新（メアド）に更新
+      // 画面上のデータ更新（内部キーはメアドに統一しつつ、表示名はニックネームを維持）
       setSurveyData((prev: any) => ({ ...prev, participant_id: cleanEmail }));
+      setDisplayName(nicknameToSave);
       setIsRegistered(true);
 
     } catch (err: any) {
@@ -233,10 +249,10 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       {/* メッセージヘッダー */}
       <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
         
-        {/* 参加者IDの表示 */}
+        {/* 参加者ID / ニックネームの表示 */}
         <div className="absolute top-4 left-4">
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-            ID: {surveyData.participant_id}
+            ID: {displayName || surveyData.participant_id}
           </span>
         </div>
 
@@ -255,7 +271,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       {/* チャート＆スコア表示カード */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-800 border-b-2 border-gray-100 pb-4">
-          {surveyData.participant_id} さんの健幸度の結果
+          {displayName || surveyData.participant_id} さんの健幸度の結果
           <span className="block text-sm text-gray-500 font-normal mt-1">Your Well-being Balance</span>
         </h2>
 
