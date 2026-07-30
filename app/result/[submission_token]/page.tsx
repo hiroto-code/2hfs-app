@@ -233,7 +233,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       {/* メッセージヘッダー */}
       <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
         
-        {/* 参加者ID（または統合後のメアド）の表示 */}
+        {/* 参加者IDの表示 */}
         <div className="absolute top-4 left-4">
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
             ID: {surveyData.participant_id}
@@ -247,15 +247,15 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           </span>
         </h1>
         <p className="text-gray-600 font-medium mt-4">
-          ご回答ありがとうございました！あなたのウェルビーイングスコアです。
-          <span className="block text-sm text-gray-400 font-normal mt-1">Thank you! Here is your well-being score.</span>
+          ご回答ありがとうございました！あなたの健幸度の結果です。
+          <span className="block text-sm text-gray-400 font-normal mt-1">Thank you! Here is your score result.</span>
         </p>
       </div>
 
       {/* チャート＆スコア表示カード */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-800 border-b-2 border-gray-100 pb-4">
-          あなたのWell-beingバランス
+          {surveyData.participant_id} さんの健幸度の結果
           <span className="block text-sm text-gray-500 font-normal mt-1">Your Well-being Balance</span>
         </h2>
 
@@ -357,7 +357,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         </div>
       </div>
 
-      {/* 🎁 メール登録 ＆ マイページ案内オプトインカード */}
+      {/* メール登録 ＆ マイページ案内カード */}
       <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 rounded-2xl shadow-sm border border-indigo-100">
         {!isRegistered ? (
           <div>

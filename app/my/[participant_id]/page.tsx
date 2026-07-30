@@ -8,7 +8,6 @@ import Link from 'next/link';
 export default function DashboardPage() {
   const params = useParams();
 
-  // URLパラメータからID（メアド）を抽出
   const rawId = (params?.id as string) || (params?.participant_id as string) || '';
   
   let participantId = '';
@@ -41,7 +40,7 @@ export default function DashboardPage() {
           .from('surveys')
           .select('*')
           .eq('participant_id', participantId)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('データ取得エラー:', error);
@@ -62,10 +61,16 @@ export default function DashboardPage() {
     fetchUserData();
   }, [participantId]);
 
-  // 点数(total_mean)が入っている最新のデータを優先して取得
-  const validSurveys = [...surveys].reverse(); // 新しい順にする
-  const preSurvey = validSurveys.find(s => s.timing_type === 'pre' && s.total_mean != null) || surveys.find(s => s.timing_type === 'pre');
-  const postSurvey = validSurveys.find(s => s.timing_type === 'post' && s.total_mean != null) || surveys.find(s => s.timing_type === 'post');
+  // 日付整形用 (例: 7/30)
+  const formatDateShort = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  const validSurveys = surveys.filter(s => s.total_mean != null && Number(s.total_mean) > 0);
+  const preSurvey = validSurveys.find(s => s.timing_type === 'pre');
+  const postSurvey = validSurveys.find(s => s.timing_type === 'post');
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 font-sans space-y-6 bg-gray-50 min-h-screen">
@@ -86,7 +91,6 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* デバッグ・お知らせ枠 */}
       {debugInfo && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
           <p className="text-sm text-yellow-800 font-bold">※開発者用メッセージ</p>
@@ -102,32 +106,45 @@ export default function DashboardPage() {
 
         {loading ? (
           <p className="text-center text-gray-400 py-8">読み込み中...</p>
-        ) : surveys.length === 0 ? (
-          <p className="text-center text-gray-400 py-8">データがまだありません。</p>
+        ) : validSurveys.length === 0 ? (
+          <p className="text-center text-gray-400 py-8">有効なスコアデータがまだありません。</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {preSurvey && (
+            {preSurvey ? (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl relative overflow-hidden">
-                <span className="text-xs font-bold text-blue-600 relative z-10">事前 (Pre)</span>
+                <span className="text-xs font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-md inline-block mb-2">
+                  📅 {formatDateShort(preSurvey.created_at)} 事前 (Pre)
+                </span>
                 <p className="text-3xl font-black text-blue-900 mt-1 relative z-10">
-                  {preSurvey.total_mean ? Number(preSurvey.total_mean).toFixed(2) : '0.00'}
+                  {Number(preSurvey.total_mean).toFixed(2)}
                   <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
                 </p>
                 <p className="text-xs text-gray-500 mt-2 relative z-10">
                   合計: {preSurvey.total_sum ?? '-'} 点
                 </p>
               </div>
+            ) : (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center py-6">
+                <span className="text-xs font-bold text-gray-400">事前 (Pre) データなし</span>
+              </div>
             )}
-            {postSurvey && (
+
+            {postSurvey ? (
               <div className="p-4 bg-green-50 border border-green-200 rounded-xl relative overflow-hidden">
-                <span className="text-xs font-bold text-green-600 relative z-10">事後 (Post)</span>
+                <span className="text-xs font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-md inline-block mb-2">
+                  📅 {formatDateShort(postSurvey.created_at)} 事後 (Post)
+                </span>
                 <p className="text-3xl font-black text-green-900 mt-1 relative z-10">
-                  {postSurvey.total_mean ? Number(postSurvey.total_mean).toFixed(2) : '0.00'}
+                  {Number(postSurvey.total_mean).toFixed(2)}
                   <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
                 </p>
                 <p className="text-xs text-gray-500 mt-2 relative z-10">
                   合計: {postSurvey.total_sum ?? '-'} 点
                 </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center py-6">
+                <span className="text-xs font-bold text-gray-400">事後 (Post) データなし</span>
               </div>
             )}
           </div>
@@ -141,28 +158,35 @@ export default function DashboardPage() {
         </h2>
         {surveys.length > 0 ? (
           <ul className="divide-y divide-gray-100">
-            {surveys.map((s) => (
-              <li key={s.id} className="py-4 flex justify-between items-center text-sm hover:bg-gray-50 transition-colors px-2 rounded-lg -mx-2">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${s.timing_type === 'post' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                  <div>
-                    <span className={`font-bold mr-2 ${s.timing_type === 'post' ? 'text-green-700' : 'text-blue-700'}`}>
-                      {s.timing_type === 'post' ? '[事後]' : '[事前]'}
-                    </span>
-                    <span className="text-gray-700 font-medium">アンケート回答</span>
+            {surveys.map((s) => {
+              const hasScore = s.total_mean != null && Number(s.total_mean) > 0;
+              return (
+                <li key={s.id} className="py-4 flex justify-between items-center text-sm hover:bg-gray-50 transition-colors px-2 rounded-lg -mx-2">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2.5 h-2.5 rounded-full ${s.timing_type === 'post' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold ${s.timing_type === 'post' ? 'text-green-700' : 'text-blue-700'}`}>
+                          {formatDateShort(s.created_at)} {s.timing_type === 'post' ? '[事後]' : '[事前]'}
+                        </span>
+                        <span className="text-gray-700 font-medium">アンケート回答</span>
+                      </div>
+                      {hasScore && (
+                        <span className="text-xs text-gray-500 mt-0.5 block">
+                          平均: {Number(s.total_mean).toFixed(2)}点 / 合計: {s.total_sum}点
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-md">
-                  {new Date(s.created_at).toLocaleDateString('ja-JP')}
-                </span>
-              </li>
-            ))}
+                  <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-md">
+                    {new Date(s.created_at).toLocaleDateString('ja-JP')}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <div className="text-center py-8">
-            <div className="inline-block p-4 bg-gray-50 rounded-full mb-3">
-              <span className="text-2xl opacity-50">📝</span>
-            </div>
             <p className="text-gray-400">履歴はありません。</p>
           </div>
         )}
