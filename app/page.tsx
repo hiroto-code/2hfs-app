@@ -69,6 +69,26 @@ export default function AdminDashboard() {
     }
   };
 
+  // イベント削除機能
+  const handleDeleteEvent = async (id: string, title: string) => {
+    if (!confirm(`「${title}」を削除してもよろしいですか？`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert('削除に失敗しました: ' + error.message);
+      } else {
+        fetchEvents();
+      }
+    } catch (err: any) {
+      alert('エラーが発生しました: ' + err.message);
+    }
+  };
+
   // URLコピー機能
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -157,6 +177,14 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-xs text-slate-400 mt-1">ID: {event.id}</p>
                       </div>
+
+                      {/* 削除ボタン */}
+                      <button
+                        onClick={() => handleDeleteEvent(event.id, event.title)}
+                        className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded transition font-medium border border-transparent hover:border-red-200"
+                      >
+                        削除
+                      </button>
                     </div>
 
                     {/* URL共有領域 */}
