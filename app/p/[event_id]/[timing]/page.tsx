@@ -36,8 +36,9 @@ export default function SurveyFormPage({ params }: PageProps) {
           {
             event_id: event_id,
             timing_type: timing,
-            q1: 5,               // ←【変更】q1 は数字専用＆必須なので、とりあえず仮で「5」を入れます
-            content: answerText, // ←【追加】入力されたテキストは、先ほど作った content の枠に入れます！
+            q1: 5,               // q1の仮データ
+            q2: 5,               // ←【追加】今回怒られた q2 にも仮の数字（5）を入れます！
+            content: answerText, // 入力されたテキスト
           }
         ]);
 
