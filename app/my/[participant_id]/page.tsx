@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { supabase } from '../../lib/supabase'; // パスは環境に合わせて調整してください
+import { supabase } from '../../../lib/supabase'; // パスを階層に合わせて修正
 import Link from 'next/link';
 
 export default function MyDashboardPage({ params }: { params: Promise<{ participant_id: string }> }) {
@@ -12,7 +12,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const [accountEmail, setAccountEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   
-  // アンケート履歴等のデータ用ステート...
+  // アンケート履歴等のデータ用ステート
   const [surveys, setSurveys] = useState<any[]>([]);
 
   useEffect(() => {
