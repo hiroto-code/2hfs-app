@@ -86,7 +86,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         if (profile) {
           setIsRegistered(true);
           setEmail(profile.email || '');
-          // 保存された表示用ニックネームがあれば採用、無ければメールアドレス以外の文字を抽出
           if (profile.display_name) {
             setDisplayName(profile.display_name);
           } else if (!currentData.participant_id.includes('@')) {
@@ -148,7 +147,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     fetchResult();
   }, [submission_token]);
 
-  // メールアドレス登録処理（メアドを軸としてIDを統合・上書きするが、ニックネームは保持する）
+  // メールアドレス登録処理（同一イベント・同一タイミングの衝突を防いで上書き統合する）
   const handleRegisterEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !surveyData) return;
@@ -159,7 +158,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     try {
       const cleanEmail = email.trim().toLowerCase();
 
-      // 現在表示されているニックネーム（メアドでなければそのまま利用）
+      // 保存するニックネーム（メールアドレスの形式でなければ採用）
       const nicknameToSave = displayName && !displayName.includes('@') ? displayName : displayName.split('@')[0];
 
       // 1. user_profiles にメアドと表示名(display_name)を保存
@@ -177,7 +176,16 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         throw profileError;
       }
 
-      // 2. 今回のアンケート回答データの participant_id をメアドに上書き（統合用）
+      // 2. 既に同じメールアドレスで「同じイベント」かつ「同じ時期（事前/事後）」のデータが存在する場合は古い方を削除して重複衝突を防ぐ
+      await supabase
+        .from('surveys')
+        .delete()
+        .eq('event_id', surveyData.event_id)
+        .eq('timing_type', surveyData.timing_type)
+        .eq('participant_id', cleanEmail)
+        .ne('submission_token', submission_token);
+
+      // 3. 今回のアンケート回答データの participant_id をメアドに更新
       const { error: surveyError } = await supabase
         .from('surveys')
         .update({ participant_id: cleanEmail })
@@ -188,15 +196,34 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         throw surveyError;
       }
 
-      // 3. 元の仮ID（例: ヒロトん）で登録されていた過去データもすべてメアドIDに一括統合
+      // 4. 元の仮IDで登録されていた過去データの一括統合（衝突回避処理付き）
       if (surveyData.participant_id && surveyData.participant_id !== cleanEmail) {
-        await supabase
+        const { data: oldSurveys } = await supabase
           .from('surveys')
-          .update({ participant_id: cleanEmail })
+          .select('*')
           .eq('participant_id', surveyData.participant_id);
+
+        if (oldSurveys && oldSurveys.length > 0) {
+          for (const oldItem of oldSurveys) {
+            const { data: existing } = await supabase
+              .from('surveys')
+              .select('id')
+              .eq('event_id', oldItem.event_id)
+              .eq('timing_type', oldItem.timing_type)
+              .eq('participant_id', cleanEmail)
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase
+                .from('surveys')
+                .update({ participant_id: cleanEmail })
+                .eq('id', oldItem.id);
+            }
+          }
+        }
       }
 
-      // 画面上のデータ更新（内部キーはメアドに統一しつつ、表示名はニックネームを維持）
+      // 画面上のデータ更新
       setSurveyData((prev: any) => ({ ...prev, participant_id: cleanEmail }));
       setDisplayName(nicknameToSave);
       setIsRegistered(true);
