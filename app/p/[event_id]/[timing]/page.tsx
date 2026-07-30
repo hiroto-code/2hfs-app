@@ -35,7 +35,8 @@ export default function SurveyFormPage({ params }: PageProps) {
         .insert([
           {
             event_id: event_id,
-            timing_type: timing, // ← コメントを外して、カラム名をエラーに合わせて timing_type に変更！
+            timing_type: timing,
+            content: answerText, // ← 追加：入力されたテキストを content 枠に保存する指示！
           }
         ]);
 
