@@ -1,33 +1,43 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
-export default function DashboardPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  
-  // URLエンコードされたIDを元の日本語にデコードする
-  const rawId = resolvedParams.id || '';
-  // ※二重にエンコードされているケースも考慮してtry-catchで安全にデコード
+export default function DashboardPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  // URLからあらゆるパターンでIDを取得（[id], [participant_id], ?id=... など全て対応）
+  const paramValue = 
+    (params?.id as string) || 
+    (params?.participant_id as string) || 
+    searchParams.get('id') || 
+    searchParams.get('participant_id') || 
+    '';
+
   let participantId = '';
   try {
+    const rawId = paramValue || '';
     participantId = decodeURIComponent(rawId);
-    // 二重エンコード対策 (例: %25E3%2583... になっている場合)
+    // 二重エンコード対策
     if (participantId.includes('%')) {
       participantId = decodeURIComponent(participantId);
     }
   } catch (e) {
-    participantId = rawId;
+    participantId = paramValue;
   }
 
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<string>(''); // デバッグ用
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
+    // IDが取得できなかった場合
     if (!participantId) {
       setLoading(false);
+      setDebugInfo('URLから参加者ID（またはメールアドレス）を読み込めませんでした。URLをご確認ください。');
       return;
     }
 
@@ -36,7 +46,7 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
       setDebugInfo('');
 
       try {
-        // デコードした participantId で検索
+        // ID（メアド または 仮ID）でSupabaseから検索
         const { data, error } = await supabase
           .from('surveys')
           .select('*')
@@ -47,10 +57,9 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
           console.error('データ取得エラー:', error);
           setDebugInfo(`DBエラー: ${error.message}`);
         } else if (data) {
-          console.log("取得したデータ:", data); // コンソールでも確認可能に
           setSurveys(data);
           if (data.length === 0) {
-             setDebugInfo(`「${participantId}」で検索しましたが、データが0件でした。`);
+            setDebugInfo(`「${participantId}」で検索しましたが、該当する回答データが0件でした。`);
           }
         }
       } catch (err: any) {
@@ -76,19 +85,20 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
             Well-being Timeline
           </span>
           <h1 className="text-2xl font-bold text-gray-800 mt-2">マイダッシュボード</h1>
-          {/* デコード後のIDを表示 */}
-          <p className="text-sm text-gray-500 mt-1">ID: <span className="font-semibold text-gray-700">{participantId}</span></p>
+          <p className="text-sm text-gray-500 mt-1">
+            ID: <span className="font-semibold text-gray-700">{participantId || '(未指定)'}</span>
+          </p>
         </div>
         <Link href="/" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm text-sm transition-colors">
           ＋ プライベートログを追加
         </Link>
       </div>
 
-      {/* デバッグ情報 (データがない場合のヒント) */}
+      {/* デバッグ・お知らせ枠 */}
       {debugInfo && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
-          <p className="text-sm text-yellow-700 font-bold">※開発者用メッセージ</p>
-          <p className="text-xs text-yellow-600 mt-1">{debugInfo}</p>
+          <p className="text-sm text-yellow-800 font-bold">※開発者用メッセージ</p>
+          <p className="text-xs text-yellow-700 mt-1">{debugInfo}</p>
         </div>
       )}
 
@@ -125,7 +135,7 @@ export default function DashboardPage({ params }: { params: Promise<{ id: string
                   {postSurvey.total_mean ? Number(postSurvey.total_mean).toFixed(2) : '0.00'}
                   <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
                 </p>
-                 <p className="text-xs text-gray-500 mt-2 relative z-10">
+                <p className="text-xs text-gray-500 mt-2 relative z-10">
                   合計: {postSurvey.total_sum} 点
                 </p>
               </div>
