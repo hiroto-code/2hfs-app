@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase';
 interface Event {
   id: string;
   title: string;
+  event_date?: string;
   created_at?: string;
 }
 
 export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [eventName, setEventName] = useState('');
+  const [eventDate, setEventDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
 
@@ -41,15 +43,23 @@ export default function AdminDashboard() {
 
     setLoading(true);
     try {
+      const insertData: { title: string; event_date?: string } = {
+        title: eventName.trim(),
+      };
+      if (eventDate) {
+        insertData.event_date = eventDate;
+      }
+
       const { data, error } = await supabase
         .from('events')
-        .insert([{ title: eventName.trim() }])
+        .insert([insertData])
         .select();
 
       if (error) {
         alert('イベントの作成に失敗しました: ' + error.message);
       } else {
         setEventName('');
+        setEventDate('');
         fetchEvents();
       }
     } catch (err: any) {
@@ -86,19 +96,33 @@ export default function AdminDashboard() {
         {/* イベント作成フォーム */}
         <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h2 className="text-lg font-semibold text-slate-700 mb-4">新規イベントの作成</h2>
-          <form onSubmit={handleCreateEvent} className="flex gap-3">
-            <input
-              type="text"
-              placeholder="イベント名（例: 2026年度 運動セミナー）"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-              className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
-              required
-            />
+          <form onSubmit={handleCreateEvent} className="space-y-4">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-500 mb-1">イベント名</label>
+                <input
+                  type="text"
+                  placeholder="例: テストイベント"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">開催日程 (任意)</label>
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800"
+                />
+              </div>
+            </div>
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition disabled:opacity-50"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-lg font-medium transition disabled:opacity-50"
             >
               {loading ? '作成中...' : '作成する'}
             </button>
@@ -123,8 +147,15 @@ export default function AdminDashboard() {
                   <div key={event.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
                     <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                       <div>
-                        <h3 className="text-xl font-semibold text-slate-800">{event.title}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">ID: {event.id}</p>
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-xl font-semibold text-slate-800">{event.title}</h3>
+                          {event.event_date && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">
+                              📅 {event.event_date}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">ID: {event.id}</p>
                       </div>
                     </div>
 
