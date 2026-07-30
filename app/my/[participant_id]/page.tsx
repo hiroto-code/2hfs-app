@@ -37,7 +37,6 @@ export default function DashboardPage() {
       setDebugInfo('');
 
       try {
-        // メアド（または仮ID）でSupabaseから検索
         const { data, error } = await supabase
           .from('surveys')
           .select('*')
@@ -63,8 +62,10 @@ export default function DashboardPage() {
     fetchUserData();
   }, [participantId]);
 
-  const preSurvey = surveys.find(s => s.timing_type === 'pre');
-  const postSurvey = surveys.find(s => s.timing_type === 'post');
+  // 点数(total_mean)が入っている最新のデータを優先して取得
+  const validSurveys = [...surveys].reverse(); // 新しい順にする
+  const preSurvey = validSurveys.find(s => s.timing_type === 'pre' && s.total_mean != null) || surveys.find(s => s.timing_type === 'pre');
+  const postSurvey = validSurveys.find(s => s.timing_type === 'post' && s.total_mean != null) || surveys.find(s => s.timing_type === 'post');
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 font-sans space-y-6 bg-gray-50 min-h-screen">
@@ -113,7 +114,7 @@ export default function DashboardPage() {
                   <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
                 </p>
                 <p className="text-xs text-gray-500 mt-2 relative z-10">
-                  合計: {preSurvey.total_sum} 点
+                  合計: {preSurvey.total_sum ?? '-'} 点
                 </p>
               </div>
             )}
@@ -125,7 +126,7 @@ export default function DashboardPage() {
                   <span className="text-sm text-gray-500 font-normal ml-1">/ 5.0</span>
                 </p>
                 <p className="text-xs text-gray-500 mt-2 relative z-10">
-                  合計: {postSurvey.total_sum} 点
+                  合計: {postSurvey.total_sum ?? '-'} 点
                 </p>
               </div>
             )}
