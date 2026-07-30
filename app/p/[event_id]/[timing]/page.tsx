@@ -6,7 +6,9 @@ import { supabase } from '@/lib/supabase';
 import { domainQuestions, scaleOptions } from '@/lib/questions';
 
 export default function SurveyPage({ params }: { params: Promise<{ event_id: string; timing: string }> }) {
-  const { event_id, timing } = use(params);
+  const resolvedParams = use(params);
+  const { event_id, timing } = resolvedParams;
+  
   const router = useRouter();
 
   const [participantId, setParticipantId] = useState('');
@@ -25,7 +27,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     setErrorMsg('');
 
     if (!participantId.trim()) {
-      setErrorMsg('参加者ID（またはお名前・ニックネーム）を入力してください。 / Please enter your Participant ID.');
+      setErrorMsg('参加者IDを入力してください。 / Please enter your Participant ID.');
       return;
     }
 
@@ -54,24 +56,34 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       const submission_token = crypto.randomUUID();
 
-      const { error } = await supabase.from('surveys').insert({
-        event_id,
-        participant_id: participantId.trim(),
-        timing_type: timing,
-        display_language: 'bilingual',
-        answers,
-        domain_kaishoku,
-        domain_kaimin,
-        domain_kaido,
-        domain_kaisho,
-        domain_kairaku,
-        domain_kaisei,
-        total_sum,
-        total_mean,
-        submission_token
-      });
+      // 同じ [イベントID, 参加者ID, 事前/事後] のデータがあればエラーにせず最新値で上書き（upsert）
+      const { error } = await supabase
+        .from('surveys')
+        .upsert(
+          {
+            event_id,
+            participant_id: participantId.trim(),
+            timing_type: timing,
+            display_language: 'bilingual',
+            answers,
+            domain_kaishoku,
+            domain_kaimin,
+            domain_kaido,
+            domain_kaisho,
+            domain_kairaku,
+            domain_kaisei,
+            total_sum,
+            total_mean,
+            submission_token
+          },
+          {
+            onConflict: 'event_id,participant_id,timing_type'
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(error.message);
+      }
 
       router.push(`/result/${submission_token}`);
 
@@ -83,61 +95,75 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-6 font-sans bg-gray-50 min-h-screen">
+    <div className="max-w-2xl mx-auto p-3 md:p-6 font-sans bg-gray-50 min-h-screen">
       
       {/* ヘッダー */}
-      <div className={`p-6 rounded-2xl shadow-sm border mb-6 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
-        <h1 className={`text-2xl font-bold ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
+      <div className={`p-4 md:p-6 rounded-2xl shadow-sm border mb-4 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
+        <h1 className={`text-xl md:text-2xl font-bold ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
           {isPost ? '事後アンケート' : '事前アンケート'}
           <span className="block text-sm font-normal mt-1 text-gray-500">
             {isPost ? 'Post-event Survey' : 'Pre-event Survey'}
           </span>
         </h1>
-        <p className="text-xs md:text-sm text-gray-600 mt-3">
+        <p className="text-xs md:text-sm text-gray-600 mt-2">
           直近のあなたの状態について、最もあてはまるものを直感でお選びください。
-          <span className="block text-xs text-gray-400 mt-0.5">Please intuitively select the option that best describes your recent state.</span>
+          <span className="block text-[11px] md:text-xs text-gray-400 mt-0.5">
+            Please intuitively select the option that best describes your recent state.
+          </span>
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
         
         {/* 参加者ID入力エリア */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200">
           <label className="block text-sm font-bold text-gray-800 mb-1">
-            参加者ID（またはお名前・ニックネーム） <span className="text-red-500">*</span>
-            <span className="block text-xs font-normal text-gray-500">Participant ID / Name</span>
+            参加者ID または ニックネーム <span className="text-red-500">*</span>
+            <span className="block text-xs font-normal text-gray-500">Participant ID or nickname</span>
           </label>
           <input
             type="text"
             required
             value={participantId}
             onChange={(e) => setParticipantId(e.target.value)}
-            placeholder="例: yamada123"
-            className="w-full mt-2 p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base"
+            placeholder="例: user001"
+            className="w-full mt-2 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-800"
           />
-          <p className="text-xs text-gray-400 mt-1">※事前・事後で同じIDをご入力ください。</p>
+          <div className="mt-2 p-2 bg-yellow-50 rounded-lg text-xs text-yellow-800 leading-relaxed">
+            <p className="font-bold">※事前・事後で同じIDをご入力ください。氏名やメールアドレスは入力しないでください。</p>
+            <p className="opacity-80">Please use the same ID before and after the activity. Do not enter your real name or email address.</p>
+          </div>
+        </div>
+
+        {/* 凡例 */}
+        <div className="bg-white p-3 rounded-xl border border-gray-200 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2 justify-center">
+          {scaleOptions.map(opt => (
+            <span key={opt.val} className="whitespace-nowrap">
+              <strong>{opt.val}</strong>: {opt.ja}
+            </span>
+          ))}
         </div>
 
         {/* 質問リスト */}
-        {domainQuestions.map((group) => (
-          <div key={group.domainKey} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200">
-            <h2 className="text-lg font-bold text-blue-900 border-b border-gray-100 pb-2 mb-4 flex items-center gap-2">
+        {domainQuestions?.map((group) => (
+          <div key={group.domainKey} className="bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-gray-200">
+            <h2 className="text-base md:text-lg font-bold text-blue-900 border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
               <span>{group.domainJa}</span>
               <span className="text-xs font-normal text-gray-400">/ {group.domainEn}</span>
             </h2>
 
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-5">
               {group.items.map((item) => {
                 const qNum = item.index + 1;
                 return (
-                  <div key={item.index} className="space-y-2">
-                    <p className="font-bold text-gray-800 text-sm md:text-base leading-snug">
+                  <div key={item.index} className="space-y-1.5">
+                    <p className="font-bold text-gray-800 text-sm leading-snug">
                       Q{qNum}. {item.textJa}
-                      <span className="block text-xs font-normal text-gray-500 mt-0.5">{item.textEn}</span>
+                      <span className="block text-[11px] font-normal text-gray-500 mt-0.5 leading-tight">{item.textEn}</span>
                     </p>
 
-                    {/* 1〜5の選択肢ボタン（スマホ最適化） */}
-                    <div className="grid grid-cols-5 gap-1 md:gap-2 pt-1">
+                    {/* 1〜5の選択肢ボタン */}
+                    <div className="grid grid-cols-5 gap-1 pt-1">
                       {scaleOptions.map((opt) => {
                         const isSelected = answers[item.index] === opt.val;
                         return (
@@ -145,17 +171,17 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                             key={opt.val}
                             type="button"
                             onClick={() => handleScoreChange(item.index, opt.val)}
-                            className={`flex flex-col items-center justify-between p-1.5 md:p-2.5 rounded-xl border transition-all text-center ${
+                            className={`flex flex-col items-center justify-start p-1.5 md:p-2 rounded-lg border transition-all text-center h-full ${
                               isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
-                                : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                             }`}
                           >
-                            <span className="text-base md:text-lg font-black leading-none mb-1">{opt.val}</span>
-                            <span className="text-[10px] md:text-xs font-medium leading-tight block w-full break-all">
+                            <span className="text-sm md:text-base font-black leading-none mb-1">{opt.val}</span>
+                            <span className={`text-[9px] md:text-[10px] font-medium leading-tight block w-full break-words ${isSelected ? 'text-white' : 'text-gray-700'}`}>
                               {opt.ja}
                             </span>
-                            <span className={`text-[8px] md:text-[10px] leading-tight block w-full mt-0.5 opacity-80 ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
+                            <span className={`text-[8px] md:text-[9px] leading-tight block w-full mt-0.5 opacity-80 break-words ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
                               {opt.en}
                             </span>
                           </button>
@@ -169,18 +195,16 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           </div>
         ))}
 
-        {/* エラーメッセージ */}
         {errorMsg && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm font-bold text-center">
+          <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-sm font-bold text-center">
             {errorMsg}
           </div>
         )}
 
-        {/* 送信ボタン */}
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-4 rounded-xl font-bold text-white text-lg shadow-md transition-all ${
+          className={`w-full py-3.5 md:py-4 rounded-xl font-bold text-white text-base md:text-lg shadow-md transition-all ${
             isPost ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
           } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
