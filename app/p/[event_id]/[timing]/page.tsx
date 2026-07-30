@@ -35,10 +35,7 @@ export default function SurveyFormPage({ params }: PageProps) {
         .insert([
           {
             event_id: event_id,
-            // timing カラムがあればここで保存します
-            // timing: timing, 
-            // 自由記述などの回答データ（仮）
-            // content: answerText 
+            timing_type: timing, // ← コメントを外して、カラム名をエラーに合わせて timing_type に変更！
           }
         ]);
 
