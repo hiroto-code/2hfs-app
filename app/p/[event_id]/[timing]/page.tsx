@@ -2,6 +2,7 @@
 
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // 👈 タブ切り替え用のLinkをインポート
 import { supabase } from '@/lib/supabase';
 import { domainQuestions, scaleOptions } from '@/lib/questions';
 
@@ -116,6 +117,37 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   return (
     <div className="max-w-2xl mx-auto p-3 md:p-6 font-sans bg-gray-50 min-h-screen">
       
+      {/* 🔄 事前 / 事後 切り替えタブナビゲーション */}
+      <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm mb-4 flex gap-2">
+        <Link
+          href={`/p/${event_id}/pre`}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            !isPost
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          <span>📋 事前アンケート</span>
+          <span className={`text-[10px] font-normal ${!isPost ? 'text-blue-100' : 'text-gray-400'}`}>
+            (Pre-event)
+          </span>
+        </Link>
+
+        <Link
+          href={`/p/${event_id}/post`}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            isPost
+              ? 'bg-green-600 text-white shadow-md'
+              : 'text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          <span>✨ 事後アンケート</span>
+          <span className={`text-[10px] font-normal ${isPost ? 'text-green-100' : 'text-gray-400'}`}>
+            (Post-event)
+          </span>
+        </Link>
+      </div>
+
       {/* ヘッダー */}
       <div className={`p-4 md:p-6 rounded-2xl shadow-sm border mb-4 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
         <h1 className={`text-xl md:text-2xl font-bold ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
