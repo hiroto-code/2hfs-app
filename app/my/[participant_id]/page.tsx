@@ -271,7 +271,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               return (
                 <div
                   key={survey.id || survey.submission_token}
-                  className="flex items-center justify-between p-4 bg-gray-50/70 hover:bg-gray-50 rounded-xl transition-colors border border-gray-100"
+                  // 👇 スマホ・PCの両方で綺麗に並ぶように flex を調整しました
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/70 hover:bg-gray-50 rounded-xl transition-colors border border-gray-100 gap-4"
                 >
                   <div className="flex items-center gap-3">
                     <span
@@ -293,9 +294,30 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     </div>
                   </div>
 
-                  <span className="text-xs text-gray-400 bg-white px-3 py-1 rounded-md border border-gray-100 font-medium">
-                    {formatDateFull(survey.target_date)}
-                  </span>
+                  {/* 👇 ここに「結果を見る」「やり直す」ボタンを追加しました */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/result/${survey.submission_token}`}
+                      className={`text-[11px] font-bold px-3 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1 shadow-sm ${
+                        isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'
+                      }`}
+                    >
+                      📊 結果を見る
+                    </Link>
+
+                    {survey.event_id && (
+                      <Link
+                        href={`/p/${survey.event_id}/${survey.timing_type}`}
+                        className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1 shadow-sm"
+                      >
+                        ✏️ やり直す
+                      </Link>
+                    )}
+
+                    <span className="text-[11px] text-gray-400 bg-white px-2.5 py-1.5 rounded-lg border border-gray-100 font-medium ml-auto sm:ml-0">
+                      {formatDateFull(survey.target_date)}
+                    </span>
+                  </div>
                 </div>
               );
             })}
