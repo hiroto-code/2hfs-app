@@ -5,10 +5,12 @@ import { supabase } from '../../../lib/supabase';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// 折れ線グラフ用のカスタムドット（事前：オレンジ / 事後：緑）
+// 折れ線グラフ用のカスタムドット（ダミーデータの場合は非表示にする処理を追加）
 const CustomDot = (props: any) => {
   const { cx, cy, payload } = props;
-  if (!cx || !cy) return null;
+  // payload.score が null（ダミーデータ）の時はドットを描画しない
+  if (!cx || !cy || payload.score === null) return null;
+  
   const isPost = payload.timing === 'post';
   const color = isPost ? '#10b981' : '#f97316'; // 事後: エメラルドグリーン, 事前: オレンジ
   return (
@@ -125,16 +127,34 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
   };
 
-  // 折れ線グラフ用のデータ整形（イベント開催日基準）
-  const chartData = surveys.map((s) => {
+  // 👇 ここを変更：折れ線グラフ用のデータ整形時に「スペーサー（空白）」を挿入する
+  const chartData: any[] = [];
+  let prevGroupKey: string | null = null;
+  let spacerIndex = 0;
+
+  surveys.forEach((s) => {
+    const currentGroupKey = s.event_id || s.target_date;
+
+    // 前回のデータと異なるイベント（別日/別イベント）の場合は、間にダミーの空白を挿入
+    if (prevGroupKey && currentGroupKey !== prevGroupKey) {
+      chartData.push({
+        label: `spacer_${spacerIndex}`, // ラベルを被らせないための処置
+        score: null, // 点数を null にすることでグラフを描かない
+        sum: null,
+        timing: 'spacer',
+      });
+      spacerIndex++;
+    }
+    prevGroupKey = currentGroupKey;
+
     const dateLabel = formatDateLabel(s.target_date);
     const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
-    return {
+    chartData.push({
       label: `${dateLabel} [${timingLabel}]`,
       score: Number(Number(s.total_mean).toFixed(2)),
       sum: s.total_sum,
       timing: s.timing_type,
-    };
+    });
   });
 
   return (
@@ -185,6 +205,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
                     dataKey="label" 
+                    tickFormatter={(value) => value.startsWith('spacer') ? '' : value} // スペーサーのラベル文字は非表示にする
                     tick={{ fontSize: 11, fill: '#64748b' }} 
                     interval={0}
                     angle={-15}
@@ -194,6 +215,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   <Tooltip 
                     formatter={(value: any) => [`${value} 点`, '総合平均点']}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+                    // スペーサー上でツールチップが出ないようにフィルター
+                    filterNull={true}
                   />
                   <Line 
                     type="monotone" 
@@ -203,6 +226,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     strokeDasharray="4 4"
                     dot={<CustomDot />}
                     activeDot={{ r: 8 }}
+                    connectNulls={true} // ダミーの空白をまたいで線を繋ぐ設定
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -271,7 +295,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               return (
                 <div
                   key={survey.id || survey.submission_token}
-                  // 👇 スマホ・PCの両方で綺麗に並ぶように flex を調整しました
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/70 hover:bg-gray-50 rounded-xl transition-colors border border-gray-100 gap-4"
                 >
                   <div className="flex items-center gap-3">
@@ -294,7 +317,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     </div>
                   </div>
 
-                  {/* 👇 ここに「結果を見る」「やり直す」ボタンを追加しました */}
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/result/${survey.submission_token}`}
