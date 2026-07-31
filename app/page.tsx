@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase'; // 👈 相対パスを修正 (../lib/supabase)
 
 interface EventItem {
   id: string;
@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
         .select('participant_id, display_name, email');
 
       const profileMap: Record<string, string> = {};
-      profilesData?.forEach((p) => {
+      profilesData?.forEach((p: any) => { // 👈 p: any で型指定を追加
         if (p.participant_id) profileMap[p.participant_id] = p.display_name || p.participant_id;
         if (p.email) profileMap[p.email] = p.display_name || p.email;
       });
@@ -67,7 +67,7 @@ export default function AdminDashboardPage() {
       if (eventsData) setEvents(eventsData);
 
       if (surveysData) {
-        const enrichedSurveys = surveysData.map((s) => ({
+        const enrichedSurveys = surveysData.map((s: any) => ({ // 👈 s: any で型指定を追加
           ...s,
           display_name: profileMap[s.participant_id] || s.participant_id,
         }));
@@ -309,7 +309,7 @@ export default function AdminDashboardPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 text-gray-700">
-                            {eventSurveys.map((s) => {
+                            {eventSurveys.map((s: any) => {
                               const isPost = s.timing_type === 'post';
                               return (
                                 <tr key={s.id} className="hover:bg-gray-50">
