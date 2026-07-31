@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase'; // 👈 相対パスを修正 (../lib/supabase)
+import { supabase } from '@/lib/supabase'; // 👈 Vercelのエラーを防ぐため @/ に変更
 
 interface EventItem {
   id: string;
@@ -53,25 +53,31 @@ export default function AdminDashboardPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      // 3. ユーザープロフィールの取得（表示名用）
-      const { data: profilesData } = await supabase
-        .from('user_profiles')
-        .select('participant_id, display_name, email');
+      // 3. ユーザープロフィールの取得（エラー停止を防ぐ安全な書き方）
+      let profilesData: Record<string, any>[] | null = null;
+      try {
+        const { data } = await supabase.from('user_profiles').select('participant_id, display_name, email');
+        profilesData = data;
+      } catch (profileErr) {
+        console.warn('プロフィールの取得をスキップしました');
+      }
 
       const profileMap: Record<string, string> = {};
-      profilesData?.forEach((p: any) => {
-        if (p.participant_id) profileMap[p.participant_id] = p.display_name || p.participant_id;
-        if (p.email) profileMap[p.email] = p.display_name || p.email;
-      });
+      if (profilesData) {
+        profilesData.forEach((p) => {
+          if (p.participant_id) profileMap[p.participant_id] = p.display_name || p.participant_id;
+          if (p.email) profileMap[p.email] = p.display_name || p.email;
+        });
+      }
 
       if (eventsData) setEvents(eventsData);
 
       if (surveysData) {
-        const enrichedSurveys = surveysData.map((s: any) => ({
+        const enrichedSurveys = surveysData.map((s) => ({
           ...s,
           display_name: profileMap[s.participant_id] || s.participant_id,
         }));
-        setSurveys(enrichedSurveys);
+        setSurveys(enrichedSurveys as SurveyItem[]);
       }
     } catch (err) {
       console.error('Fetch admin data error:', err);
@@ -184,7 +190,7 @@ export default function AdminDashboardPage() {
           </div>
         ) : (
           events.map((ev) => {
-            // ⭕️ ここを修正！元のコードの `?timing=pre` を `/pre` に変更しました
+            // ⭕️ URL修正済み（/pre と /post）
             const preUrl = `${baseUrl}/p/${ev.id}/pre`;
             const postUrl = `${baseUrl}/p/${ev.id}/post`;
 
@@ -310,7 +316,7 @@ export default function AdminDashboardPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100 text-gray-700">
-                            {eventSurveys.map((s: any) => {
+                            {eventSurveys.map((s) => {
                               const isPost = s.timing_type === 'post';
                               return (
                                 <tr key={s.id} className="hover:bg-gray-50">
