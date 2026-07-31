@@ -94,12 +94,21 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         submission_token
       };
 
-      // 重複時は上書き（upsert）
+      // ▼ 今回追加：過去の自分の回答があれば確実に削除する（上書きのため） ▼
+      await supabase
+        .from('surveys')
+        .delete()
+        .match({ 
+          event_id: event_id, 
+          participant_id: participantId.trim(), 
+          timing_type: timing 
+        });
+      // ▲ ここまで追加 ▲
+
+      // 新しい回答データを保存（削除済みなので通常のinsertとして処理されます）
       const { error } = await supabase
         .from('surveys')
-        .upsert(payload, {
-          onConflict: 'event_id,participant_id,timing_type'
-        });
+        .insert(payload);
 
       if (error) {
         throw new Error(error.message);
