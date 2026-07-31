@@ -5,14 +5,12 @@ import { supabase } from '../../../lib/supabase';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// 折れ線グラフ用のカスタムドット（ダミーデータの場合は非表示にする処理を追加）
 const CustomDot = (props: any) => {
   const { cx, cy, payload } = props;
-  // payload.score が null（ダミーデータ）の時はドットを描画しない
   if (!cx || !cy || payload.score === null) return null;
   
   const isPost = payload.timing === 'post';
-  const color = isPost ? '#10b981' : '#f97316'; // 事後: エメラルドグリーン, 事前: オレンジ
+  const color = isPost ? '#10b981' : '#f97316'; 
   return (
     <circle cx={cx} cy={cy} r={6} fill={color} stroke="#ffffff" strokeWidth={2} />
   );
@@ -32,7 +30,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
       try {
         setLoading(true);
 
-        // 1. プロフィール情報（display_name と email）を取得
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('*')
@@ -49,7 +46,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setAccountEmail(participantId.includes('@') ? participantId : '');
         }
 
-        // 2. 該当ユーザーのアンケート履歴を取得（ここでは回答順でとりあえず取得）
         let query = supabase.from('surveys').select('*');
         if (currentEmail) {
           query = query.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`);
@@ -60,7 +56,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         const { data: surveyLogs, error: surveyError } = await query;
 
         if (!surveyError && surveyLogs) {
-          // 3. 各アンケートに対応するイベント情報を一括取得してイベント開催日を紐付け
           const eventIds = Array.from(new Set(surveyLogs.map((s) => s.event_id).filter(Boolean)));
           let eventsMap: Record<string, any> = {};
 
@@ -78,7 +73,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             }
           }
 
-          // event_date (または date) を優先使用し、なければ created_at でフォールバック
           const enrichedSurveys = surveyLogs.map((s) => {
             const ev = eventsMap[s.event_id];
             const targetDate = ev?.event_date || ev?.date || s.created_at;
@@ -89,17 +83,14 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             };
           });
 
-          // 👇 ここが重要！「イベント開催日（target_date）」を基準に古い順に並び替え
           enrichedSurveys.sort((a, b) => {
             const timeA = new Date(a.target_date).getTime();
             const timeB = new Date(b.target_date).getTime();
 
-            // イベントの日付が違う場合は日付順（昇順＝古い順）
             if (timeA !== timeB) {
               return timeA - timeB;
             }
 
-            // 日付が同じ（同じイベント）場合は、事前(pre) → 事後(post) の順番にする
             if (a.timing_type === 'pre' && b.timing_type === 'post') return -1;
             if (a.timing_type === 'post' && b.timing_type === 'pre') return 1;
 
@@ -127,11 +118,9 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     );
   }
 
-  // 最新の事前・事後データ（並び替えた配列から取得）
   const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre');
   const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post');
 
-  // 日付フォーマットヘルパー
   const formatDateLabel = (dateStr?: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -144,7 +133,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
   };
 
-  // 折れ線グラフ用のデータ整形時に「スペーサー（空白）」を挿入する
   const chartData: any[] = [];
   let prevGroupKey: string | null = null;
   let spacerIndex = 0;
@@ -152,11 +140,10 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   surveys.forEach((s) => {
     const currentGroupKey = s.event_id || s.target_date;
 
-    // 前回のデータと異なるイベント（別日/別イベント）の場合は、間にダミーの空白を挿入
     if (prevGroupKey && currentGroupKey !== prevGroupKey) {
       chartData.push({
-        label: `spacer_${spacerIndex}`, // ラベルを被らせないための処置
-        score: null, // 点数を null にすることでグラフを描かない
+        label: `spacer_${spacerIndex}`,
+        score: null,
         sum: null,
         timing: 'spacer',
       });
@@ -176,7 +163,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
-      {/* 1. ヘッダーカード */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">
@@ -197,16 +183,13 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </button>
       </div>
 
-      {/* 2. 健幸度スコアの経時推移（折れ線グラフ ＆ 最新カード） */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6">
         <h2 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-6">
           健幸度スコアの経時推移
         </h2>
 
-        {/* 📈 折れ線グラフ表示エリア */}
         {chartData.length > 0 ? (
           <div className="mb-8 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-            {/* 凡例（事前：オレンジ / 事後：緑） */}
             <div className="flex items-center justify-center gap-6 mb-4 text-xs font-bold text-gray-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> 事前 (Pre)
@@ -218,21 +201,23 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
             <div className="w-full h-64 md:h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 10, right: 20, left: -20, bottom: 20 }}>
+                {/* 👇 左のマイナス余白を0に戻し、下部の余白を少し増やしました */}
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis 
                     dataKey="label" 
-                    tickFormatter={(value) => value.startsWith('spacer') ? '' : value} // スペーサーのラベル文字は非表示にする
+                    tickFormatter={(value) => value.startsWith('spacer') ? '' : value}
                     tick={{ fontSize: 11, fill: '#64748b' }} 
                     interval={0}
                     angle={-15}
                     textAnchor="end"
+                    // 👇 グラフの左右に内側の余白（padding）を持たせて端の文字が切れないようにしました
+                    padding={{ left: 30, right: 30 }}
                   />
                   <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
                   <Tooltip 
                     formatter={(value: any) => [`${value} 点`, '総合平均点']}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
-                    // スペーサー上でツールチップが出ないようにフィルター
                     filterNull={true}
                   />
                   <Line 
@@ -243,7 +228,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     strokeDasharray="4 4"
                     dot={<CustomDot />}
                     activeDot={{ r: 8 }}
-                    connectNulls={true} // ダミーの空白をまたいで線を繋ぐ設定
+                    connectNulls={true} 
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -251,9 +236,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           </div>
         ) : null}
 
-        {/* 最新スコアサマリーカード */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 最新事前 (Pre) カード：暖色オレンジ */}
           <div className="bg-orange-50/50 border border-orange-100 p-5 rounded-2xl">
             {preSurvey ? (
               <>
@@ -275,7 +258,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             )}
           </div>
 
-          {/* 最新事後 (Post) カード：緑 */}
           <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl">
             {postSurvey ? (
               <>
@@ -299,7 +281,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </div>
       </div>
 
-      {/* 3. アクティビティ・イベント履歴（降順：最新が上） */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <h2 className="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-6">
           アクティビティ・イベント履歴
@@ -307,7 +288,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
         {surveys.length > 0 ? (
           <div className="space-y-4">
-            {/* surveysは「古い順」になっているので、履歴リスト用に.reverse()で「最新順」にして表示 */}
             {[...surveys].reverse().map((survey) => {
               const isPostType = survey.timing_type === 'post';
               return (
