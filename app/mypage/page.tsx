@@ -75,20 +75,23 @@ export default function MyDashboard() {
       ) : (
         <div className="space-y-6">
           {events.map(ev => {
+            // 👇 ここを修正：それぞれの回答データを特定して、固有のトークンを取得するようにしました
             const myEventSurveys = surveys.filter(s => s.event_id === ev.id);
-            const hasPre = myEventSurveys.some(s => s.timing_type === 'pre');
-            const hasPost = myEventSurveys.some(s => s.timing_type === 'post');
+            const preSurvey = myEventSurveys.find(s => s.timing_type === 'pre');
+            const postSurvey = myEventSurveys.find(s => s.timing_type === 'post');
 
             return (
               <div key={ev.id} className="bg-white p-6 rounded-2xl border shadow-sm">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">{ev.title}</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 事前アンケート側 */}
                   <div className="p-4 bg-orange-50/50 border border-orange-100 rounded-xl">
                     <h3 className="font-bold text-orange-800 mb-3">事前 (Pre)</h3>
-                    {hasPre ? (
+                    {preSurvey ? (
                       <div className="flex gap-2">
-                        <Link href={`/result/${ev.id}/pre`} className="flex-1 text-center bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold py-2 rounded-lg transition">
+                        {/* 👇 リンク先を submission_token に修正しました */}
+                        <Link href={`/result/${preSurvey.submission_token}`} className="flex-1 text-center bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold py-2 rounded-lg transition">
                           📊 結果を見る
                         </Link>
                         <Link href={`/p/${ev.id}/pre`} className="text-center bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs font-bold py-2 px-3 rounded-lg transition">
@@ -102,11 +105,13 @@ export default function MyDashboard() {
                     )}
                   </div>
 
+                  {/* 事後アンケート側 */}
                   <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl">
                     <h3 className="font-bold text-emerald-800 mb-3">事後 (Post)</h3>
-                    {hasPost ? (
+                    {postSurvey ? (
                       <div className="flex gap-2">
-                        <Link href={`/result/${ev.id}/post`} className="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition">
+                        {/* 👇 リンク先を submission_token に修正しました */}
+                        <Link href={`/result/${postSurvey.submission_token}`} className="flex-1 text-center bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 rounded-lg transition">
                           📊 結果を見る
                         </Link>
                         <Link href={`/p/${ev.id}/post`} className="text-center bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 text-xs font-bold py-2 px-3 rounded-lg transition">
