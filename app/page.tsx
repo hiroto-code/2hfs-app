@@ -1,173 +1,347 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase'; // 👈 相対パスを修正 (../lib/supabase)
 
-type Event = {
+interface EventItem {
   id: string;
   title: string;
+  event_date?: string;
+  date?: string;
   created_at: string;
-};
+}
 
-export default function AdminPage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [newTitle, setNewTitle] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [baseUrl, setBaseUrl] = useState('');
+interface SurveyItem {
+  id: string;
+  event_id: string;
+  participant_id: string;
+  timing_type: string;
+  total_mean: number;
+  total_sum: number;
+  created_at: string;
+  display_name?: string;
+}
+
+export default function AdminDashboardPage() {
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [surveys, setSurveys] = useState<SurveyItem[]>([]);
+  const [title, setTitle] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setBaseUrl(window.location.origin);
-    }
-    fetchEvents();
+    fetchData();
   }, []);
 
-  const fetchEvents = async () => {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-    if (error) {
-      console.error('Error fetching events:', error);
-    } else if (data) {
-      setEvents(data);
+      // 1. イベント一覧の取得
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // 2. 回答データの取得
+      const { data: surveysData } = await supabase
+        .from('surveys')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // 3. ユーザープロフィールの取得（表示名用）
+      const { data: profilesData } = await supabase
+        .from('user_profiles')
+        .select('participant_id, display_name, email');
+
+      const profileMap: Record<string, string> = {};
+      profilesData?.forEach((p: any) => {
+        if (p.participant_id) profileMap[p.participant_id] = p.display_name || p.participant_id;
+        if (p.email) profileMap[p.email] = p.display_name || p.email;
+      });
+
+      if (eventsData) setEvents(eventsData);
+
+      if (surveysData) {
+        const enrichedSurveys = surveysData.map((s: any) => ({
+          ...s,
+          display_name: profileMap[s.participant_id] || s.participant_id,
+        }));
+        setSurveys(enrichedSurveys);
+      }
+    } catch (err) {
+      console.error('Fetch admin data error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // 新規イベント作成
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!title) return;
 
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('events')
-      .insert([{ title: newTitle.trim() }])
-      .select();
+    const { error } = await supabase.from('events').insert([
+      {
+        title,
+        event_date: eventDate || null,
+      },
+    ]);
 
-    if (error) {
-      alert('イベント作成に失敗しました: ' + error.message);
+    if (!error) {
+      setTitle('');
+      setEventDate('');
+      fetchData();
     } else {
-      setNewTitle('');
-      fetchEvents();
+      alert('イベント作成に失敗しました: ' + error.message);
     }
-    setLoading(false);
   };
 
-  const copyToClipboard = (text: string) => {
+  // イベント削除
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm('このイベントを削除してもよろしいですか？')) return;
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (!error) {
+      fetchData();
+    } else {
+      alert('削除に失敗しました: ' + error.message);
+    }
+  };
+
+  // コピー処理
+  const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
-    alert('URLをコピーしました！');
+    setCopiedId(key);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // アコーディオン開閉
+  const toggleExpand = (eventId: string) => {
+    setExpandedEventId(expandedEventId === eventId ? null : eventId);
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
-        📊 管理者ダッシュボード
-      </h1>
+    <div className="max-w-5xl mx-auto p-4 md:p-8 font-sans min-h-screen bg-gray-50">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800">2HFS 管理者ダッシュボード</h1>
+        <p className="text-sm text-gray-500 mt-1">アンケートイベントの作成および回答状況・URLの管理ができます。</p>
+      </header>
 
-      {/* 新規イベント作成 */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">新規イベント・研修の作成</h2>
-        <form onSubmit={handleCreateEvent} className="flex gap-2">
-          <input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="例: 〇〇企業 研修会"
-            className="flex-1 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-800"
-            required
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl transition-all disabled:opacity-50"
-          >
-            {loading ? '作成中...' : '作成する'}
-          </button>
+      {/* 新規イベント作成フォーム */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-4">新規イベントの作成</h2>
+        <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="md:col-span-1">
+            <label className="block text-xs font-bold text-gray-600 mb-1">イベント名</label>
+            <input
+              type="text"
+              placeholder="例: SUPwell@狩野川"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-600 mb-1">開催日程 (任意)</label>
+            <input
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors shadow-sm"
+            >
+              作成する
+            </button>
+          </div>
         </form>
       </div>
 
-      {/* イベント一覧 */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">作成済みイベント一覧</h2>
-        {events.length === 0 ? (
-          <p className="text-gray-500 text-sm bg-white p-6 rounded-2xl text-center border">
-            まだイベントが作成されていません。
-          </p>
+      {/* 作成済みイベント一覧 */}
+      <div className="space-y-6">
+        <h2 className="text-lg font-bold text-gray-800">作成済みイベント一覧</h2>
+
+        {loading ? (
+          <div className="text-center py-8 text-gray-400 font-bold">読み込み中...</div>
+        ) : events.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">
+            イベントがまだ登録されていません。
+          </div>
         ) : (
           events.map((ev) => {
-            // ⭕ URLの形式を /pre と /post に修正
+            // ⭕️ ここを修正！元のコードの `?timing=pre` を `/pre` に変更しました
             const preUrl = `${baseUrl}/p/${ev.id}/pre`;
             const postUrl = `${baseUrl}/p/${ev.id}/post`;
 
+            // このイベントに紐づく回答データを抽出
+            const eventSurveys = surveys.filter((s) => s.event_id === ev.id);
+            const preCount = eventSurveys.filter((s) => s.timing_type === 'pre').length;
+            const postCount = eventSurveys.filter((s) => s.timing_type === 'post').length;
+
+            const isExpanded = expandedEventId === ev.id;
+            const targetDate = ev.event_date || ev.date;
+
             return (
-              <div key={ev.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
-                <div className="flex justify-between items-start border-b pb-3">
+              <div key={ev.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{ev.title}</h3>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="text-xl font-bold text-gray-800">{ev.title}</h3>
+                      {targetDate && (
+                        <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-md">
+                          📅 {targetDate}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 mt-1">ID: {ev.id}</p>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">
-                    {new Date(ev.created_at).toLocaleDateString('ja-JP')}
-                  </span>
+
+                  <button
+                    onClick={() => handleDeleteEvent(ev.id)}
+                    className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    削除
+                  </button>
                 </div>
 
-                {/* URL一覧 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* 事前アンケート */}
-                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-blue-900 text-sm">📋 事前アンケート</span>
+                {/* 事前 / 事後 URL */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                    <div className="text-xs font-bold text-blue-700 mb-1">事前アンケート URL</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={preUrl}
+                        className="w-full bg-white px-2 py-1 border rounded text-xs text-gray-600 truncate"
+                      />
                       <a
                         href={preUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-blue-600 hover:underline font-medium"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
                       >
                         開く ↗
                       </a>
+                      <button
+                        onClick={() => handleCopy(preUrl, `${ev.id}-pre`)}
+                        className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
+                      >
+                        {copiedId === `${ev.id}-pre` ? 'コピー完了' : 'コピー'}
+                      </button>
                     </div>
-                    <input
-                      type="text"
-                      readOnly
-                      value={preUrl}
-                      className="w-full text-xs p-2 bg-white border border-blue-200 rounded-lg text-gray-600 mb-2"
-                    />
-                    <button
-                      onClick={() => copyToClipboard(preUrl)}
-                      className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all"
-                    >
-                      事前URLをコピー
-                    </button>
                   </div>
 
-                  {/* 事後アンケート */}
-                  <div className="p-3 bg-green-50 rounded-xl border border-green-100">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-green-900 text-sm">✨ 事後アンケート</span>
+                  <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
+                    <div className="text-xs font-bold text-emerald-700 mb-1">事後アンケート URL</div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={postUrl}
+                        className="w-full bg-white px-2 py-1 border rounded text-xs text-gray-600 truncate"
+                      />
                       <a
                         href={postUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-green-600 hover:underline font-medium"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
                       >
                         開く ↗
                       </a>
+                      <button
+                        onClick={() => handleCopy(postUrl, `${ev.id}-post`)}
+                        className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
+                      >
+                        {copiedId === `${ev.id}-post` ? 'コピー完了' : 'コピー'}
+                      </button>
                     </div>
-                    <input
-                      type="text"
-                      readOnly
-                      value={postUrl}
-                      className="w-full text-xs p-2 bg-white border border-green-200 rounded-lg text-gray-600 mb-2"
-                    />
-                    <button
-                      onClick={() => copyToClipboard(postUrl)}
-                      className="w-full py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-all"
-                    >
-                      事後URLをコピー
-                    </button>
                   </div>
                 </div>
+
+                {/* 📊 アコーディオン展開ボタン */}
+                <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                    <span>回答件数:</span>
+                    <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">事前 {preCount}件</span>
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">事後 {postCount}件</span>
+                  </div>
+
+                  <button
+                    onClick={() => toggleExpand(ev.id)}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 py-1 px-3 rounded-lg hover:bg-indigo-50 transition-colors"
+                  >
+                    📊 回答結果を確認 ({eventSurveys.length}件) {isExpanded ? '▲' : '▼'}
+                  </button>
+                </div>
+
+                {/* 📋 回答結果一覧（開閉部） */}
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/80 p-4 rounded-xl">
+                    <h4 className="text-xs font-bold text-gray-700 mb-3">アンケート回答ログ</h4>
+
+                    {eventSurveys.length === 0 ? (
+                      <p className="text-xs text-gray-400 py-2 text-center">まだ回答がありません。</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100">
+                          <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
+                            <tr>
+                              <th className="p-2.5">回答者 (ニックネーム / ID)</th>
+                              <th className="p-2.5">タイミング</th>
+                              <th className="p-2.5">総合平均点</th>
+                              <th className="p-2.5">合計点</th>
+                              <th className="p-2.5">回答日時</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-gray-700">
+                            {eventSurveys.map((s: any) => {
+                              const isPost = s.timing_type === 'post';
+                              return (
+                                <tr key={s.id} className="hover:bg-gray-50">
+                                  <td className="p-2.5 font-bold text-gray-800">
+                                    {s.display_name}
+                                  </td>
+                                  <td className="p-2.5">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        isPost
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : 'bg-orange-100 text-orange-800'
+                                      }`}
+                                    >
+                                      {isPost ? '事後 (Post)' : '事前 (Pre)'}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 font-black text-gray-900">
+                                    {Number(s.total_mean).toFixed(2)} / 5.0
+                                  </td>
+                                  <td className="p-2.5 text-gray-500">{s.total_sum} 点</td>
+                                  <td className="p-2.5 text-gray-400">{formatDate(s.created_at)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
