@@ -49,7 +49,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setAccountEmail(participantId.includes('@') ? participantId : '');
         }
 
-        // 2. 該当ユーザーのアンケート履歴を取得（時系列順）
+        // 2. 該当ユーザーのアンケート履歴を取得（ここでは回答順でとりあえず取得）
         let query = supabase.from('surveys').select('*');
         if (currentEmail) {
           query = query.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`);
@@ -57,7 +57,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           query = query.eq('participant_id', participantId);
         }
 
-        const { data: surveyLogs, error: surveyError } = await query.order('created_at', { ascending: true });
+        const { data: surveyLogs, error: surveyError } = await query;
 
         if (!surveyError && surveyLogs) {
           // 3. 各アンケートに対応するイベント情報を一括取得してイベント開催日を紐付け
@@ -89,6 +89,23 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             };
           });
 
+          // 👇 ここが重要！「イベント開催日（target_date）」を基準に古い順に並び替え
+          enrichedSurveys.sort((a, b) => {
+            const timeA = new Date(a.target_date).getTime();
+            const timeB = new Date(b.target_date).getTime();
+
+            // イベントの日付が違う場合は日付順（昇順＝古い順）
+            if (timeA !== timeB) {
+              return timeA - timeB;
+            }
+
+            // 日付が同じ（同じイベント）場合は、事前(pre) → 事後(post) の順番にする
+            if (a.timing_type === 'pre' && b.timing_type === 'post') return -1;
+            if (a.timing_type === 'post' && b.timing_type === 'pre') return 1;
+
+            return 0;
+          });
+
           setSurveys(enrichedSurveys);
         }
 
@@ -110,7 +127,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     );
   }
 
-  // 最新の事前・事後データ
+  // 最新の事前・事後データ（並び替えた配列から取得）
   const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre');
   const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post');
 
@@ -127,7 +144,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
   };
 
-  // 👇 ここを変更：折れ線グラフ用のデータ整形時に「スペーサー（空白）」を挿入する
+  // 折れ線グラフ用のデータ整形時に「スペーサー（空白）」を挿入する
   const chartData: any[] = [];
   let prevGroupKey: string | null = null;
   let spacerIndex = 0;
@@ -290,6 +307,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
         {surveys.length > 0 ? (
           <div className="space-y-4">
+            {/* surveysは「古い順」になっているので、履歴リスト用に.reverse()で「最新順」にして表示 */}
             {[...surveys].reverse().map((survey) => {
               const isPostType = survey.timing_type === 'post';
               return (
