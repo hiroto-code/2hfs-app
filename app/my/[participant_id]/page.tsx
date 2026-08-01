@@ -199,40 +199,46 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               </span>
             </div>
 
-            <div className="w-full h-64 md:h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                {/* 👇 左のマイナス余白を0に戻し、下部の余白を少し増やしました */}
-                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="label" 
-                    tickFormatter={(value) => value.startsWith('spacer') ? '' : value}
-                    tick={{ fontSize: 11, fill: '#64748b' }} 
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                    // 👇 グラフの左右に内側の余白（padding）を持たせて端の文字が切れないようにしました
-                    padding={{ left: 30, right: 30 }}
-                  />
-                  <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <Tooltip 
-                    formatter={(value: any) => [`${value} 点`, '総合平均点']}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
-                    filterNull={true}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="#cbd5e1" 
-                    strokeWidth={2.5} 
-                    strokeDasharray="4 4"
-                    dot={<CustomDot />}
-                    activeDot={{ r: 8 }}
-                    connectNulls={true} 
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* 👇 overflow-x-auto を追加し、スマホでの横スクロールを可能にしました */}
+            <div className="w-full overflow-x-auto pb-2">
+              {/* 👇 min-w-[500px] でスマホでもグラフが縮みすぎないように最低幅を確保 */}
+              <div className="h-64 md:h-72 min-w-[500px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  {/* 下の余白（bottom）を増やしてラベルが切れないように調整 */}
+                  <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="label" 
+                      tickFormatter={(value) => value.startsWith('spacer') ? '' : value}
+                      tick={{ fontSize: 10, fill: '#64748b' }} // フォントサイズを少し小さく
+                      interval={0}
+                      angle={-45} // 👇 角度を少し急にして重なりを防止
+                      textAnchor="end"
+                      dx={-2}
+                      dy={10} // ラベルを少し下にずらす
+                      padding={{ left: 30, right: 30 }}
+                    />
+                    <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
+                    <Tooltip 
+                      formatter={(value: any) => [`${value} 点`, '総合平均点']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}
+                      filterNull={true}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="score" 
+                      stroke="#cbd5e1" 
+                      strokeWidth={2.5} 
+                      strokeDasharray="4 4"
+                      dot={<CustomDot />}
+                      activeDot={{ r: 8 }}
+                      connectNulls={true} 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
+            {/* 👆 スクロール領域ここまで */}
           </div>
         ) : null}
 
