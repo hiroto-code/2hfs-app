@@ -178,9 +178,12 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           )}
         </div>
 
-        <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm">
+        <Link 
+          href="/private-log" 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm inline-block text-center"
+        >
           + プライベートログを追加
-        </button>
+        </Link>
       </div>
 
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6">
@@ -199,23 +202,20 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               </span>
             </div>
 
-            {/* 👇 overflow-x-auto を追加し、スマホでの横スクロールを可能にしました */}
             <div className="w-full overflow-x-auto pb-2">
-              {/* 👇 min-w-[500px] でスマホでもグラフが縮みすぎないように最低幅を確保 */}
               <div className="h-64 md:h-72 min-w-[500px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  {/* 下の余白（bottom）を増やしてラベルが切れないように調整 */}
                   <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="label" 
                       tickFormatter={(value) => value.startsWith('spacer') ? '' : value}
-                      tick={{ fontSize: 10, fill: '#64748b' }} // フォントサイズを少し小さく
+                      tick={{ fontSize: 10, fill: '#64748b' }}
                       interval={0}
-                      angle={-45} // 👇 角度を少し急にして重なりを防止
+                      angle={-45}
                       textAnchor="end"
                       dx={-2}
-                      dy={10} // ラベルを少し下にずらす
+                      dy={10}
                       padding={{ left: 30, right: 30 }}
                     />
                     <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
@@ -238,7 +238,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                 </ResponsiveContainer>
               </div>
             </div>
-            {/* 👆 スクロール領域ここまで */}
           </div>
         ) : null}
 
