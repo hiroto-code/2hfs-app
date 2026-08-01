@@ -179,8 +179,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </div>
 
         {/* 👇 テキストを「プライベートイベントの回答をする」に変更しました */}
-        <Link 
-          href="/p/private/pre" 
+      <Link 
+          href="/create-private-event" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm inline-block text-center"
         >
           📋 プライベートイベントの回答をする
