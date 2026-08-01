@@ -178,11 +178,12 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           )}
         </div>
 
+        {/* 👇 リンク先とテキストを変更しました */}
         <Link 
-          href="/private-log" 
+          href="/p/private/pre" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm inline-block text-center"
         >
-          + プライベートログを追加
+          📋 アンケートに回答する
         </Link>
       </div>
 
