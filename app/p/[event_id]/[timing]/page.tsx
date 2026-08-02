@@ -90,7 +90,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         event_id,
         participant_id: formattedEmail,
         display_name: formattedName,
-        timing_type: timing,
+        timing_type: timing, // ⭕️ 'private' のまま正しく保存します
         display_language: 'bilingual',
         answers,
         q1: answers[0],
