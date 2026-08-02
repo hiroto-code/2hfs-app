@@ -23,27 +23,28 @@ export default function CreatePrivateEventPage() {
 
     try {
       const eventId = crypto.randomUUID();
+      
+      // 💡 ダッシュボードで判別できるように、内部的に「【プライベート】」という目印を先頭に付けます
+      const dbTitle = `【プライベート】${title}`;
 
-      // 💡 日付を「event_date」として正しくデータベースに送信します
       let { error } = await supabase
         .from('events')
         .insert([
           {
             id: eventId,
-            title: title, 
-            event_date: eventDate, // ここで日付を保存！
+            title: dbTitle, 
+            event_date: eventDate, 
           }
         ]);
 
-      // もし title カラムが存在しないエラーだった場合は、event_name で再挑戦
       if (error && error.code === 'PGRST204' && error.message.includes('title')) {
          const { error: retryError } = await supabase
           .from('events')
           .insert([
             {
               id: eventId,
-              event_name: title,
-              event_date: eventDate, // こちらでも日付を保存！
+              event_name: dbTitle,
+              event_date: eventDate, 
             }
           ]);
          error = retryError;
@@ -53,7 +54,6 @@ export default function CreatePrivateEventPage() {
         throw error;
       }
 
-      // 取得した正式なUUIDを使って、事前アンケート(2HFS)へ遷移
       router.push(`/p/${eventId}/pre`);
 
     } catch (err: any) {

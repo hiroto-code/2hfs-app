@@ -5,12 +5,15 @@ import { supabase } from '../../../lib/supabase';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+// 💡 グラフの点を描画するカスタムコンポーネント（パープルを追加）
 const CustomDot = (props: any) => {
   const { cx, cy, payload } = props;
   if (!cx || !cy || payload.score === null) return null;
   
+  const isPrivate = payload.isPrivate;
   const isPost = payload.timing === 'post';
-  const color = isPost ? '#10b981' : '#f97316'; 
+  // プライベートは紫、事後は緑、事前はオレンジ
+  const color = isPrivate ? '#8b5cf6' : (isPost ? '#10b981' : '#f97316'); 
   return (
     <circle cx={cx} cy={cy} r={6} fill={color} stroke="#ffffff" strokeWidth={2} />
   );
@@ -76,10 +79,19 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           const enrichedSurveys = surveyLogs.map((s) => {
             const ev = eventsMap[s.event_id];
             const targetDate = ev?.event_date || ev?.date || s.created_at;
+            
+            // 💡 内部の目印「【プライベート】」があるかチェック
+            const rawTitle = ev?.title || ev?.event_name || '';
+            const isPrivate = rawTitle.includes('【プライベート】');
+            // 表示用には目印を削除して綺麗な名前にする
+            const displayTitle = rawTitle.replace('【プライベート】', '');
+
             return {
               ...s,
               target_date: targetDate,
-              event_title: ev?.title || ev?.event_name || '',
+              event_title: rawTitle,
+              displayTitle: displayTitle,
+              isPrivate: isPrivate,
             };
           });
 
@@ -87,13 +99,9 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             const timeA = new Date(a.target_date).getTime();
             const timeB = new Date(b.target_date).getTime();
 
-            if (timeA !== timeB) {
-              return timeA - timeB;
-            }
-
+            if (timeA !== timeB) return timeA - timeB;
             if (a.timing_type === 'pre' && b.timing_type === 'post') return -1;
             if (a.timing_type === 'post' && b.timing_type === 'pre') return 1;
-
             return 0;
           });
 
@@ -118,8 +126,10 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     );
   }
 
-  const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre');
-  const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post');
+  // 💡 トップのサマリーカードを3種類に分けます
+  const preSurvey = [...surveys].reverse().find((s) => s.timing_type === 'pre' && !s.isPrivate);
+  const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post' && !s.isPrivate);
+  const privateSurvey = [...surveys].reverse().find((s) => s.isPrivate);
 
   const formatDateLabel = (dateStr?: string) => {
     if (!dateStr) return '';
@@ -146,6 +156,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         score: null,
         sum: null,
         timing: 'spacer',
+        isPrivate: false,
       });
       spacerIndex++;
     }
@@ -153,11 +164,14 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
     const dateLabel = formatDateLabel(s.target_date);
     const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
+    
     chartData.push({
-      label: `${dateLabel} [${timingLabel}]`,
+      // プライベートの場合は [事前] の表記を消してスッキリさせます
+      label: s.isPrivate ? `${dateLabel}` : `${dateLabel} [${timingLabel}]`,
       score: Number(Number(s.total_mean).toFixed(2)),
       sum: s.total_sum,
       timing: s.timing_type,
+      isPrivate: s.isPrivate, // グラフの点に渡すフラグ
     });
   });
 
@@ -178,8 +192,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           )}
         </div>
 
-        {/* 👇 テキストを「プライベートイベントの回答をする」に変更しました */}
-      <Link 
+        <Link 
           href="/create-private-event" 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-colors shadow-sm inline-block text-center"
         >
@@ -194,12 +207,16 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
         {chartData.length > 0 ? (
           <div className="mb-8 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+            {/* 💡 グラフの凡例に「プライベート」を追加しました */}
             <div className="flex items-center justify-center gap-6 mb-4 text-xs font-bold text-gray-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> 事前 (Pre)
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> 事後 (Post)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-purple-500 inline-block" /> プライベート
               </span>
             </div>
 
@@ -242,7 +259,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 💡 カードを3カラム（事前・事後・プライベート）に並べます */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-orange-50/50 border border-orange-100 p-5 rounded-2xl">
             {preSurvey ? (
               <>
@@ -284,6 +302,27 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               <div className="text-sm text-gray-400 py-4 text-center">事後アンケート未回答</div>
             )}
           </div>
+
+          <div className="bg-purple-50/50 border border-purple-100 p-5 rounded-2xl">
+            {privateSurvey ? (
+              <>
+                <div className="inline-block bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-lg mb-4">
+                  📅 {formatDateLabel(privateSurvey.target_date)} プライベート
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-purple-900">
+                    {Number(privateSurvey.total_mean).toFixed(2)}
+                  </span>
+                  <span className="text-gray-500 text-sm font-medium">/ 5.0</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  合計: {privateSurvey.total_sum} 点
+                </p>
+              </>
+            ) : (
+              <div className="text-sm text-gray-400 py-4 text-center">プライベート記録なし</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -296,24 +335,27 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           <div className="space-y-4">
             {[...surveys].reverse().map((survey) => {
               const isPostType = survey.timing_type === 'post';
+              
+              // 💡 履歴リストの配色やテキストも、プライベート専用に切り替えます
+              const badgeColor = survey.isPrivate ? 'bg-purple-500' : (isPostType ? 'bg-emerald-500' : 'bg-orange-500');
+              const textColor = survey.isPrivate ? 'text-purple-600' : (isPostType ? 'text-emerald-600' : 'text-orange-600');
+              const timingText = survey.isPrivate ? '[プライベート]' : (isPostType ? '[事後]' : '[事前]');
+              const buttonColor = survey.isPrivate ? 'bg-purple-600 hover:bg-purple-700' : (isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700');
+
               return (
                 <div
                   key={survey.id || survey.submission_token}
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50/70 hover:bg-gray-50 rounded-xl transition-colors border border-gray-100 gap-4"
                 >
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                        isPostType ? 'bg-emerald-500' : 'bg-orange-500'
-                      }`}
-                    />
+                    <span className={`w-3 h-3 rounded-full flex-shrink-0 ${badgeColor}`} />
                     <div>
                       <div className="font-bold text-gray-800 text-sm">
                         {formatDateLabel(survey.target_date)}{' '}
-                        <span className={isPostType ? 'text-emerald-600' : 'text-orange-600'}>
-                          [{isPostType ? '事後' : '事前'}]
+                        <span className={textColor}>
+                          {timingText}
                         </span>{' '}
-                        {survey.event_title ? `${survey.event_title} ` : ''}アンケート回答
+                        {survey.displayTitle ? `${survey.displayTitle} ` : ''}アンケート回答
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         平均: {Number(survey.total_mean).toFixed(2)}点 / 合計: {survey.total_sum}点
@@ -324,9 +366,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={`/result/${survey.submission_token}`}
-                      className={`text-[11px] font-bold px-3 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1 shadow-sm ${
-                        isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'
-                      }`}
+                      className={`text-[11px] font-bold px-3 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1 shadow-sm ${buttonColor}`}
                     >
                       📊 結果を見る
                     </Link>
