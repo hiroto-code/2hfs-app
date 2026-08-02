@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -12,12 +12,23 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   
   const router = useRouter();
 
-  const [participantId, setParticipantId] = useState('');
+  // ユーザー情報のステート（IDから、メールと表示名に分離）
+  const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const isPost = timing === 'post';
+
+  // 💡 初回読み込み時：過去に入力した情報をブラウザから復元
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('supwell_user_email');
+    const savedName = localStorage.getItem('supwell_user_name');
+    if (savedEmail) setEmail(savedEmail);
+    if (savedName) setDisplayName(savedName);
+  }, []);
 
   const handleScoreChange = (qIndex: number, val: number) => {
     setAnswers(prev => ({ ...prev, [qIndex]: val }));
@@ -27,8 +38,8 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     e.preventDefault();
     setErrorMsg('');
 
-    if (!participantId.trim()) {
-      setErrorMsg('参加者IDを入力してください。 / Please enter your Participant ID.');
+    if (!email.trim()) {
+      setErrorMsg('メールアドレスを入力してください。 / Please enter your email address.');
       return;
     }
 
@@ -40,6 +51,16 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     setLoading(true);
 
     try {
+      // 💡 データの正規化（揺れ防止）
+      // メールアドレスは空白を消し、すべて小文字に統一
+      const formattedEmail = email.trim().toLowerCase();
+      // 表示名が空欄の場合は「ゲスト」にする
+      const formattedName = displayName.trim() || 'ゲスト';
+
+      // 入力情報をブラウザに保存（次回以降の自動入力用）
+      localStorage.setItem('supwell_user_email', formattedEmail);
+      localStorage.setItem('supwell_user_name', formattedName);
+
       // 各領域の平均点計算
       const getDomainMean = (indices: number[]) => {
         const sum = indices.reduce((acc, idx) => acc + (answers[idx] || 0), 0);
@@ -58,10 +79,11 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       const submission_token = crypto.randomUUID();
 
-      // DBの全対応カラム（q1〜q18, domain_..., answers）へ一元保存するペイロード
+      // DB保存用ペイロード
       const payload = {
         event_id,
-        participant_id: participantId.trim(),
+        participant_id: formattedEmail, // ★ データ紐付け用の主キーとしてメールアドレスを保存
+        display_name: formattedName,    // ★ 新規追加した表示名カラム
         timing_type: timing,
         display_language: 'bilingual',
         answers,
@@ -94,13 +116,13 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         submission_token
       };
 
-      // 過去の自分の回答があれば確実に削除する（上書きのため）
+      // 事前・事後の上書き用（メールアドレスを基準に過去データを削除）
       await supabase
         .from('surveys')
         .delete()
         .match({ 
           event_id: event_id, 
-          participant_id: participantId.trim(), 
+          participant_id: formattedEmail, // メールアドレスで特定
           timing_type: timing 
         });
 
@@ -175,23 +197,43 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           
-          {/* 参加者ID入力エリア */}
-          <div className="bg-white p-5 rounded-3xl shadow-md border border-orange-100">
-            <label className="block text-sm font-bold text-gray-800 mb-1">
-              参加者ID または ニックネーム <span className="text-rose-500">*</span>
-              <span className="block text-xs font-normal text-gray-500">Participant ID or nickname</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={participantId}
-              onChange={(e) => setParticipantId(e.target.value)}
-              placeholder="例: user001"
-              className="w-full mt-2 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
-            />
-            <div className="mt-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200/60 text-xs text-amber-900 leading-relaxed">
-              <p className="font-bold">※事前・事後で同じIDをご入力ください。氏名やメールアドレスは入力しないでください。</p>
-              <p className="opacity-80 mt-0.5">Please use the same ID before and after the activity. Do not enter your real name or email address.</p>
+          {/* ✨ ユーザー情報入力エリア（メール＆表示名） */}
+          <div className="bg-white p-5 rounded-3xl shadow-md border border-orange-100 space-y-4">
+            
+            {/* メールアドレス（必須） */}
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-1">
+                メールアドレス <span className="text-rose-500">*</span>
+                <span className="block text-xs font-normal text-gray-500">Email address (Used for saving your history)</span>
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="例: example@juntendo.ac.jp"
+                className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
+              />
+            </div>
+
+            {/* 表示名・ニックネーム（任意） */}
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-1">
+                表示名・ニックネーム
+                <span className="block text-xs font-normal text-gray-500">Display Name / Nickname (Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="例: ゆめ"
+                className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
+              />
+            </div>
+
+            <div className="mt-2 p-3 bg-amber-50/80 rounded-2xl border border-amber-200/60 text-xs text-amber-900 leading-relaxed">
+              <p className="font-bold">※データの集計・マイダッシュボードの表示にはメールアドレスを使用します。</p>
+              <p className="opacity-80 mt-0.5">※入力した情報はブラウザに記憶され、次回から自動入力されます。</p>
             </div>
           </div>
 
