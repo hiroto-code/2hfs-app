@@ -11,7 +11,6 @@ export default function CreatePrivateEventPage() {
   // 今日の日付を初期値に設定 (YYYY-MM-DD)
   const [eventDate, setEventDate] = useState(() => {
     const today = new Date();
-    // タイムゾーンのズレを防ぐための処理
     today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
     return today.toISOString().split('T')[0];
   });
@@ -23,27 +22,25 @@ export default function CreatePrivateEventPage() {
     if (!title) return;
     setLoading(true);
 
-    // 一意のイベントIDを生成（prv_ + 現在のタイムスタンプ）
-    const eventId = `prv_${Date.now()}`;
-
     try {
-      // eventsテーブルに新しいイベントを登録
-      const { error } = await supabase
+      // データベースに新しいイベントを登録し、正式なID(UUID)を自動生成して取得する
+      const { data, error } = await supabase
         .from('events')
         .insert([
           {
-            id: eventId,
             title: title,          // イベント名
             event_name: title,     // 念のため両方のカラムに対応
             event_date: eventDate, // 日付
             date: eventDate,       // 念のため両方のカラムに対応
           }
-        ]);
+        ])
+        .select('id') // ← ここで生成されたUUIDを受け取る
+        .single();
 
       if (error) throw error;
 
-      // 作成した固有のイベントIDを使って、事前アンケート(2HFS)へ遷移
-      router.push(`/p/${eventId}/pre`);
+      // 取得した正式なUUIDを使って、事前アンケート(2HFS)へ遷移
+      router.push(`/p/${data.id}/pre`);
 
     } catch (err) {
       console.error('イベントの作成に失敗しました:', err);
