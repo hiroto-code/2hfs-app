@@ -1,29 +1,73 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabase'; // ← ここを `../../` に修正しました！
+import { supabase } from '../../lib/supabase';
 
 export default function PrivateLogPage() {
   const router = useRouter();
+  const [displayName, setDisplayName] = useState<string>('');
   const [score, setScore] = useState<number>(3);
   const [memo, setMemo] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // 💡 前回入力した名前があればローカルストレージから自動で初期セット
+  useEffect(() => {
+    const savedName = localStorage.getItem('user_display_name');
+    if (savedName) {
+      setDisplayName(savedName);
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 名前の入力チェック
+    if (!displayName.trim()) {
+      setErrorMsg('お名前（ニックネーム）を入力してください。');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg('');
 
     try {
-      // 1. プライベートイベントのタイトルを生成
+      // 💡 1. ログイン中のユーザー情報を取得
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentEmail = user?.email;
+      const participantId = currentEmail || user?.id;
+
+      // 💡 2. ニックネームを `user_profiles` テーブルに保存/更新（upsert）
+      if (participantId) {
+        // ローカルストレージにも保存しておく（次回以降の入力省略用）
+        localStorage.setItem('user_display_name', displayName.trim());
+
+        const profileData: any = {
+          display_name: displayName.trim(),
+          updated_at: new Date().toISOString(),
+        };
+
+        if (currentEmail) {
+          profileData.email = currentEmail;
+          profileData.participant_id = currentEmail;
+        } else if (user?.id) {
+          profileData.participant_id = user.id;
+        }
+
+        // profilesテーブルへ上書きまたは新規作成
+        await supabase
+          .from('user_profiles')
+          .upsert(profileData, { onConflict: currentEmail ? 'email' : 'participant_id' });
+      }
+
+      // 3. プライベートイベントのタイトルを生成
       const eventTitle = `【プライベート】${memo.trim() || '今日の振り返り'}`;
       
       // 今日の日付を取得 (YYYY-MM-DD)
       const today = new Date().toISOString().split('T')[0];
 
-      // 2. Supabaseのeventsテーブルに新規イベントを自動作成
+      // 4. Supabaseのeventsテーブルに新規イベントを自動作成
       const { data: newEvent, error } = await supabase
         .from('events')
         .insert([
@@ -38,8 +82,8 @@ export default function PrivateLogPage() {
       if (error) throw error;
 
       if (newEvent && newEvent.id) {
-        // 3. 作成されたイベントIDを使って、実際のアンケート回答画面へ自動遷移
-router.push(`/private-survey/${newEvent.id}`);
+        // 5. 作成されたイベントIDを使って、実際のアンケート回答画面へ自動遷移
+        router.push(`/private-survey/${newEvent.id}`);
       }
 
     } catch (err: any) {
@@ -73,10 +117,25 @@ router.push(`/private-survey/${newEvent.id}`);
         {/* 入力フォーム */}
         <form onSubmit={handleSubmit} className="px-8 pb-10 relative z-10">
           
+          {/* 💡 お名前（ニックネーム）入力欄（追加） */}
+          <div className="mb-6">
+            <label className="block text-gray-700 font-bold mb-2 text-sm">
+              あなたのお名前・ニックネーム <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="例：ヒロト、hiro"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm bg-gray-50 focus:bg-white font-medium"
+            />
+          </div>
+
           {/* 気分入力 */}
-          <div className="mb-8">
-            <label className="block text-gray-700 font-bold mb-4 text-center text-sm">
-              チェックを始める前に、今の気分は？
+          <div className="mb-6">
+            <label className="block text-gray-700 font-bold mb-3 text-center text-sm">
+              今の気分は？
             </label>
             <div className="flex justify-between items-center gap-2">
               {[
