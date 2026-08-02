@@ -75,7 +75,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        // ローカルストレージからの名前取得（直前に作成画面で入力した名前）
+        // ローカルストレージからの名前取得
         const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
 
         // イベント情報の取得・判定
@@ -96,12 +96,11 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        // 💡 修正ポイント1: 最新のプロフィールを1件取得
+        // 最新のプロフィールを1件取得
         const { data: profiles } = await supabase
           .from('user_profiles')
           .select('*')
           .or(`participant_id.eq.${currentData.participant_id},email.eq.${currentData.participant_id}`)
-          .order('created_at', { ascending: false })
           .limit(1);
 
         const profile = profiles?.[0];
@@ -116,7 +115,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        // 💡 修正ポイント2: 優先順位にしたがって名前を確定＆フォーム非表示判定
         if (!resolvedName && savedLocalName) {
           resolvedName = savedLocalName;
         }
@@ -129,7 +127,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        // guestの完全排除
         if (!resolvedName || resolvedName === 'guest') {
           resolvedName = 'あなた';
         }
@@ -137,7 +134,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         setDisplayName(resolvedName);
         setInputName(resolvedName !== 'あなた' ? resolvedName : '');
 
-        // 既に名前・メアドが登録済み（guest以外）なら保存完了状態にする
         if (profile?.email || (currentData.participant_id && currentData.participant_id !== 'guest' && currentData.participant_id.includes('@'))) {
           setIsRegistered(true);
         }
@@ -207,12 +203,12 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         localStorage.setItem('user_display_name', nicknameToSave);
       }
 
+      // 💡 修正箇所: updated_at を除去して安全にupsert
       const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
           participant_id: cleanEmail,
           email: cleanEmail,
           display_name: nicknameToSave,
-          updated_at: new Date().toISOString(),
         },
         { onConflict: 'email' }
       );
