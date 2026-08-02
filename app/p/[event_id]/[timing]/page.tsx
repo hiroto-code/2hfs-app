@@ -240,7 +240,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="例: ゆめ"
+                placeholder="例: さぷうぇる、ドラ◯もん、など"
                 className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
               />
             </div>
