@@ -8,7 +8,7 @@ export default function AdminExportPage() {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 💡 フィルター用ステート
+  // フィルター用ステート
   const [selectedEvent, setSelectedEvent] = useState<string>('all');
   const [selectedTiming, setSelectedTiming] = useState<string>('all');
   const [excludePrivate, setExcludePrivate] = useState<boolean>(true);
