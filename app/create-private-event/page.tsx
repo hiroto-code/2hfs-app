@@ -24,16 +24,30 @@ export default function CreatePrivateEventPage() {
     try {
       const eventId = crypto.randomUUID();
 
-      // 💡 原因になりやすい重複カラムを削り、シンプルに送信します
-      const { error } = await supabase
+      // 💡 日付を「event_date」として正しくデータベースに送信します
+      let { error } = await supabase
         .from('events')
         .insert([
           {
             id: eventId,
-            title: title,  // イベント名（標準的なカラム名）
-            date: eventDate, // 日付（標準的なカラム名）
+            title: title, 
+            event_date: eventDate, // ここで日付を保存！
           }
         ]);
+
+      // もし title カラムが存在しないエラーだった場合は、event_name で再挑戦
+      if (error && error.code === 'PGRST204' && error.message.includes('title')) {
+         const { error: retryError } = await supabase
+          .from('events')
+          .insert([
+            {
+              id: eventId,
+              event_name: title,
+              event_date: eventDate, // こちらでも日付を保存！
+            }
+          ]);
+         error = retryError;
+      }
 
       if (error) {
         throw error;
@@ -44,7 +58,6 @@ export default function CreatePrivateEventPage() {
 
     } catch (err: any) {
       console.error('イベントの作成に失敗しました:', err);
-      // 💡 エラーの中身（Object）をそのまま画面のアラートにテキストで表示します！
       alert(`イベントの作成に失敗しました。\n\n【エラー詳細】\n${JSON.stringify(err, null, 2)}`);
       setLoading(false);
     }
