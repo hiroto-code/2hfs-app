@@ -51,7 +51,10 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   // 💡 プライベートイベント判定用のステート
   const [isPrivate, setIsPrivate] = useState(false);
 
+  // ▼ 新しく「ニックネーム入力用」のステートを追加 ▼
+  const [inputName, setInputName] = useState("");
   const [email, setEmail] = useState("");
+  
   const [registering, setRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [regError, setRegError] = useState("");
@@ -172,7 +175,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const nicknameToSave = displayName && !displayName.includes('@') ? displayName : displayName.split('@')[0];
+      // ▼ ここを修正：入力された名前があれば優先、なければメアドの@前を使う ▼
+      const nicknameToSave = inputName.trim() || cleanEmail.split('@')[0];
 
       const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
@@ -422,21 +426,30 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
               メールアドレスを登録して自分専用のマイダッシュボードを作成すると、<span className="text-indigo-600 font-bold">グラフで日々の変化を振り返る</span>ことができます。（登録は無料です）
             </p>
 
-            <form onSubmit={handleRegisterEmail} className="flex flex-col sm:flex-row gap-3">
+            {/* ▼ ニックネーム入力欄を追加して縦並びにしました ▼ */}
+            <form onSubmit={handleRegisterEmail} className="flex flex-col gap-3">
+              <input
+                type="text"
+                required
+                placeholder="お名前 / ニックネーム (例: Hiroto)"
+                value={inputName}
+                onChange={(e) => setInputName(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
+              />
               <input
                 type="email"
                 required
                 placeholder="メールアドレスを入力 (例: user@supwell.jp)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
               />
               <button
                 type="submit"
                 disabled={registering}
-                className="bg-gray-900 hover:bg-black text-white font-bold px-6 py-3.5 rounded-xl shadow-md text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap"
+                className="bg-gray-900 hover:bg-black text-white font-bold px-6 py-4 rounded-xl shadow-md text-sm md:text-base transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 mt-2"
               >
-                {registering ? '保存中...' : '結果を保存する ✨'}
+                {registering ? '保存中...' : 'お名前と結果を保存する ✨'}
               </button>
             </form>
             {regError && <p className="text-xs text-red-500 mt-3 font-bold bg-red-50 p-2 rounded-md">{regError}</p>}

@@ -33,21 +33,37 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
       try {
         setLoading(true);
 
-        const { data: profile } = await supabase
+        // 💡 修正ポイント1: 古いデータではなく、必ず「最新」のプロフィールを1件取得する
+        const { data: profiles } = await supabase
           .from('user_profiles')
           .select('*')
           .or(`participant_id.eq.${participantId},email.eq.${participantId}`)
-          .maybeSingle();
+          .order('created_at', { ascending: false })
+          .limit(1);
 
+        const profile = profiles?.[0];
         const currentEmail = profile?.email || (participantId.includes('@') ? participantId : '');
         
+        // 💡 修正ポイント2: 「guest」表示をブロックし、正しい名前を確実にセットする
+        let resolvedName = participantId.includes('@') ? participantId.split('@')[0] : participantId;
+
         if (profile) {
-          setDisplayName(profile.display_name || profile.participant_id);
-          setAccountEmail(currentEmail);
-        } else {
-          setDisplayName(participantId.includes('@') ? participantId.split('@')[0] : participantId);
-          setAccountEmail(participantId.includes('@') ? participantId : '');
+          if (profile.display_name) {
+            resolvedName = profile.display_name; // ニックネームがあれば最優先
+          } else if (profile.participant_id && profile.participant_id !== 'guest') {
+            resolvedName = profile.participant_id; // IDがguest以外なら使用
+          } else if (currentEmail) {
+            resolvedName = currentEmail.split('@')[0]; // メアドの@前を使用
+          }
         }
+
+        // 万が一の最終フォールバック (絶対にguestと表示させない)
+        if (resolvedName === 'guest' || !resolvedName) {
+          resolvedName = currentEmail ? currentEmail.split('@')[0] : 'あなた';
+        }
+
+        setDisplayName(resolvedName);
+        setAccountEmail(currentEmail);
 
         let query = supabase.from('surveys').select('*');
         if (currentEmail) {
