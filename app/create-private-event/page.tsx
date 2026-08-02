@@ -127,7 +127,7 @@ export default function PrivateLogPage() {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="例：ヒロト、hiro"
+              placeholder="例：さぷうぇる、ドラ◯もん、など"
               className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm bg-gray-50 focus:bg-white font-medium"
             />
           </div>
