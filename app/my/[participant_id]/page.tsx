@@ -105,14 +105,20 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             };
           });
 
-          enrichedSurveys.sort((a, b) => {
-            const timeA = new Date(a.target_date).getTime();
-            const timeB = new Date(b.target_date).getTime();
+          // 💡 同日内の並び順ルール（事前: 1 ➔ 事後: 2 ➔ プライベート: 3）
+          const timingOrder: Record<string, number> = { pre: 1, post: 2, private: 3 };
 
-            if (timeA !== timeB) return timeA - timeB;
-            if (a.timing_type === 'pre' && b.timing_type === 'post') return -1;
-            if (a.timing_type === 'post' && b.timing_type === 'pre') return 1;
-            return 0;
+          enrichedSurveys.sort((a, b) => {
+            const dateA = new Date(a.target_date).setHours(0, 0, 0, 0);
+            const dateB = new Date(b.target_date).setHours(0, 0, 0, 0);
+
+            // 1. まずは日付で並び替え
+            if (dateA !== dateB) return dateA - dateB;
+
+            // 2. 同一日の場合は「事前 ➔ 事後 ➔ プライベート」で強制並び替え
+            const orderA = timingOrder[a.timing_type] || (a.isPrivate ? 3 : 99);
+            const orderB = timingOrder[b.timing_type] || (b.isPrivate ? 3 : 99);
+            return orderA - orderB;
           });
 
           setSurveys(enrichedSurveys);
@@ -120,7 +126,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
       } catch (err) {
         console.error('Fetch dashboard error:', err);
-      } finally {
+      } font-medium {
         setLoading(false);
       }
     };
@@ -141,7 +147,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post' && !s.isPrivate);
   const privateSurvey = [...surveys].reverse().find((s) => s.isPrivate);
 
-  // 💡 追加ロジック: 最新の事前アンケートに紐づく「事後」が未回答かどうかを判定
   const isPostPending = preSurvey ? !surveys.some(s => s.event_id === preSurvey.event_id && s.timing_type === 'post') : false;
 
   const formatDateLabel = (dateStr?: string) => {
@@ -176,7 +181,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     prevGroupKey = currentGroupKey;
 
     const dateLabel = formatDateLabel(s.target_date);
-    const timingLabel = s.timing_type === 'post' ? '事後' : '事前';
+    // 💡 X軸用タグを「前」「後」に変更（例: 8/2 [前]）
+    const timingLabel = s.timing_type === 'post' ? '後' : '前';
     
     chartData.push({
       label: s.isPrivate ? `${dateLabel}` : `${dateLabel} [${timingLabel}]`,
@@ -269,7 +275,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               )}
             </div>
 
-            {/* 事後（💡 ここが進化しました！） */}
+            {/* 事後 */}
             <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col justify-center">
               {isPostPending && preSurvey ? (
                 <div className="flex flex-col items-center justify-center text-center space-y-3 py-1">
