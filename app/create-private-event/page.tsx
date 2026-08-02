@@ -94,16 +94,16 @@ export default function PrivateLogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 font-sans flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-lg border border-indigo-50 overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 py-12 px-4 font-sans flex items-center justify-center">
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-orange-100 overflow-hidden relative">
         
         {/* 装飾用の背景円 */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-100 rounded-full blur-3xl opacity-50 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-100 rounded-full blur-3xl opacity-50 -z-10 transform -translate-x-1/2 translate-y-1/2"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full blur-3xl opacity-40 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-200 rounded-full blur-3xl opacity-40 -z-10 transform -translate-x-1/2 translate-y-1/2"></div>
 
         {/* ヘッダー部分 */}
         <div className="pt-10 pb-6 px-8 text-center relative z-10">
-          <div className="inline-block bg-indigo-100 text-indigo-600 text-xs font-black px-3 py-1 rounded-full mb-3 tracking-wider">
+          <div className="inline-block bg-orange-100 text-orange-600 text-xs font-black px-3 py-1 rounded-full mb-3 tracking-wider">
             SELF CHECK
           </div>
           <h1 className="text-2xl font-black text-gray-800 tracking-tight leading-tight mb-2">
@@ -117,10 +117,10 @@ export default function PrivateLogPage() {
         {/* 入力フォーム */}
         <form onSubmit={handleSubmit} className="px-8 pb-10 relative z-10">
           
-          {/* 💡 お名前（ニックネーム）入力欄（追加） */}
+          {/* お名前（ニックネーム）入力欄 */}
           <div className="mb-6">
             <label className="block text-gray-700 font-bold mb-2 text-sm">
-              あなたのお名前・ニックネーム <span className="text-red-500">*</span>
+              あなたのお名前・ニックネーム <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -128,7 +128,7 @@ export default function PrivateLogPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="例：さぷうぇる、ドラ◯もん、など"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm bg-gray-50 focus:bg-white font-medium"
+              className="w-full bg-white border-2 border-orange-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none transition-all text-sm font-medium text-gray-800 placeholder-gray-400 shadow-sm"
             />
           </div>
 
@@ -151,8 +151,8 @@ export default function PrivateLogPage() {
                   onClick={() => setScore(item.val)}
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 ${
                     score === item.val
-                      ? 'bg-indigo-100 border-2 border-indigo-500 shadow-sm transform scale-110'
-                      : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100 grayscale opacity-60 hover:grayscale-0 hover:opacity-100'
+                      ? 'bg-orange-100 border-2 border-orange-400 shadow-md transform scale-110'
+                      : 'bg-white border-2 border-orange-50 hover:border-orange-200 hover:bg-orange-50 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 shadow-sm'
                   }`}
                 >
                   {item.emoji}
@@ -171,13 +171,13 @@ export default function PrivateLogPage() {
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
               placeholder="例：今日の振り返り、朝サウナ など"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-sm bg-gray-50 focus:bg-white"
+              className="w-full bg-white border-2 border-orange-200 rounded-xl px-4 py-3.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none transition-all text-sm font-medium text-gray-800 placeholder-gray-400 shadow-sm"
             />
           </div>
 
           {/* エラーメッセージ */}
           {errorMsg && (
-            <p className="text-red-500 text-xs font-bold text-center mb-4">{errorMsg}</p>
+            <p className="text-rose-500 text-xs font-bold text-center mb-4">{errorMsg}</p>
           )}
 
           {/* アクションボタン */}
@@ -185,7 +185,7 @@ export default function PrivateLogPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 px-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-orange-400 to-rose-400 hover:from-orange-500 hover:to-rose-500 text-white font-bold py-4 px-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isSubmitting ? '準備中...' : 'さっそく測定を始める (約1分) ▶'}
             </button>
@@ -193,7 +193,7 @@ export default function PrivateLogPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="w-full bg-transparent text-gray-400 hover:text-gray-600 font-bold py-3 px-4 rounded-xl transition-colors text-sm"
+              className="w-full bg-transparent text-gray-400 hover:text-orange-500 font-bold py-3 px-4 rounded-xl transition-colors text-sm"
             >
               あとでにする
             </button>
