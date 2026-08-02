@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../lib/supabase'; // ※パスは環境に合わせて調整してください（例: '../../lib/supabase' など）
+import { supabase } from '../../lib/supabase'; // ← ここを `../../` に修正しました！
 
 export default function PrivateLogPage() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export default function PrivateLogPage() {
       const today = new Date().toISOString().split('T')[0];
 
       // 2. Supabaseのeventsテーブルに新規イベントを自動作成
-      // ※ カラム名が 'event_name' の場合は適宜書き換えてください
       const { data: newEvent, error } = await supabase
         .from('events')
         .insert([
@@ -40,7 +39,6 @@ export default function PrivateLogPage() {
 
       if (newEvent && newEvent.id) {
         // 3. 作成されたイベントIDを使って、実際のアンケート回答画面へ自動遷移
-        // プライベートログなので「事後(post)」として扱う設定にしています
         router.push(`/survey/${newEvent.id}?timing=post`);
       }
 
