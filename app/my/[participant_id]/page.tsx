@@ -5,14 +5,13 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// 💡 グラフの点を描画するカスタムコンポーネント（パープル・緑・オレンジ）
+// 💡 グラフの点を描画するカスタムコンポーネント
 const CustomDot = (props: any) => {
   const { cx, cy, payload } = props;
   if (!cx || !cy || payload.score === null) return null;
   
   const isPrivate = payload.isPrivate;
   const isPost = payload.timing === 'post';
-  // プライベートは紫、事後は緑、事前はオレンジ
   const color = isPrivate ? '#a855f7' : (isPost ? '#10b981' : '#f97316'); 
   return (
     <circle cx={cx} cy={cy} r={6} fill={color} stroke="#ffffff" strokeWidth={2} className="drop-shadow-sm" />
@@ -33,7 +32,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
       try {
         setLoading(true);
 
-        // 1. 最新のプロフィールを1件取得
         const { data: profiles } = await supabase
           .from('user_profiles')
           .select('*')
@@ -44,7 +42,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         const profile = profiles?.[0];
         const currentEmail = profile?.email || (participantId.includes('@') ? participantId : '');
         
-        // 2. 「guest」表示をブロックし、正しい名前を確実にセット
         let resolvedName = participantId.includes('@') ? participantId.split('@')[0] : participantId;
 
         if (profile) {
@@ -144,6 +141,9 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const postSurvey = [...surveys].reverse().find((s) => s.timing_type === 'post' && !s.isPrivate);
   const privateSurvey = [...surveys].reverse().find((s) => s.isPrivate);
 
+  // 💡 追加ロジック: 最新の事前アンケートに紐づく「事後」が未回答かどうかを判定
+  const isPostPending = preSurvey ? !surveys.some(s => s.event_id === preSurvey.event_id && s.timing_type === 'post') : false;
+
   const formatDateLabel = (dateStr?: string) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -224,51 +224,20 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
           {chartData.length > 0 ? (
             <div className="mb-8 bg-orange-50/30 p-4 rounded-2xl border border-orange-100/60">
-              {/* 凡例 */}
               <div className="flex items-center justify-center gap-6 mb-4 text-xs font-bold text-gray-600 flex-wrap">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> 事前 (Pre)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> 事後 (Post)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full bg-purple-500 inline-block" /> プライベート
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-orange-500 inline-block" /> 事前 (Pre)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> 事後 (Post)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-purple-500 inline-block" /> プライベート</span>
               </div>
-
               <div className="w-full overflow-x-auto pb-2">
                 <div className="h-64 md:h-72 min-w-[500px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="label" 
-                        tickFormatter={(value) => value.startsWith('spacer') ? '' : value}
-                        tick={{ fontSize: 10, fill: '#64748b' }}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        dx={-2}
-                        dy={10}
-                        padding={{ left: 30, right: 30 }}
-                      />
+                      <XAxis dataKey="label" tickFormatter={(value) => value.startsWith('spacer') ? '' : value} tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-45} textAnchor="end" dx={-2} dy={10} padding={{ left: 30, right: 30 }} />
                       <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <Tooltip 
-                        formatter={(value: any) => [`${value} 点`, '総合平均点']}
-                        contentStyle={{ borderRadius: '16px', border: '1px solid #fed7aa', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                        filterNull={true}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="score" 
-                        stroke="#cbd5e1" 
-                        strokeWidth={2.5} 
-                        strokeDasharray="4 4"
-                        dot={<CustomDot />}
-                        activeDot={{ r: 8 }}
-                        connectNulls={true} 
-                      />
+                      <Tooltip formatter={(value: any) => [`${value} 点`, '総合平均点']} contentStyle={{ borderRadius: '16px', border: '1px solid #fed7aa', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} filterNull={true} />
+                      <Line type="monotone" dataKey="score" stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="4 4" dot={<CustomDot />} activeDot={{ r: 8 }} connectNulls={true} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -276,7 +245,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             </div>
           ) : null}
 
-          {/* 3つのサマリーカード（事前・事後・プライベート） */}
+          {/* 3つのサマリーカード */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* 事前 */}
             <div className="bg-gradient-to-br from-orange-50/80 to-amber-50/50 border border-orange-100 p-5 rounded-2xl shadow-sm">
@@ -300,11 +269,23 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               )}
             </div>
 
-            {/* 事後 */}
-            <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-100 p-5 rounded-2xl shadow-sm">
-              {postSurvey ? (
+            {/* 事後（💡 ここが進化しました！） */}
+            <div className="bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-100 p-5 rounded-2xl shadow-sm flex flex-col justify-center">
+              {isPostPending && preSurvey ? (
+                <div className="flex flex-col items-center justify-center text-center space-y-3 py-1">
+                  <p className="text-[11px] text-emerald-700 font-bold bg-emerald-100/60 px-2.5 py-1 rounded-md">
+                    イベント終了後はこちらから👇
+                  </p>
+                  <Link
+                    href={`/p/${preSurvey.event_id}/post`}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs md:text-sm px-4 py-3 rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  >
+                    <span>✨</span> 事後アンケートに進む
+                  </Link>
+                </div>
+              ) : postSurvey ? (
                 <>
-                  <div className="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-lg mb-3">
+                  <div className="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-lg mb-3 self-start">
                     📅 {formatDateLabel(postSurvey.target_date)} 事後 (Post)
                   </div>
                   <div className="flex items-baseline gap-1">
@@ -356,25 +337,19 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             <div className="space-y-3">
               {[...surveys].reverse().map((survey) => {
                 const isPostType = survey.timing_type === 'post';
-                
                 const badgeColor = survey.isPrivate ? 'bg-purple-500' : (isPostType ? 'bg-emerald-500' : 'bg-orange-500');
                 const textColor = survey.isPrivate ? 'text-purple-600' : (isPostType ? 'text-emerald-600' : 'text-orange-600');
                 const timingText = survey.isPrivate ? '[プライベート]' : (isPostType ? '[事後]' : '[事前]');
                 const buttonColor = survey.isPrivate ? 'bg-purple-600 hover:bg-purple-700' : (isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600');
 
                 return (
-                  <div
-                    key={survey.id || survey.submission_token}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-orange-50/30 hover:bg-orange-50/80 rounded-2xl transition-all border border-orange-100/60 gap-4"
-                  >
+                  <div key={survey.id || survey.submission_token} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-orange-50/30 hover:bg-orange-50/80 rounded-2xl transition-all border border-orange-100/60 gap-4">
                     <div className="flex items-center gap-3">
                       <span className={`w-3 h-3 rounded-full flex-shrink-0 ${badgeColor} shadow-sm`} />
                       <div>
                         <div className="font-bold text-gray-800 text-sm">
                           {formatDateLabel(survey.target_date)}{' '}
-                          <span className={textColor}>
-                            {timingText}
-                          </span>{' '}
+                          <span className={textColor}>{timingText}</span>{' '}
                           {survey.displayTitle ? `${survey.displayTitle} ` : ''}アンケート回答
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
@@ -384,22 +359,14 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={`/result/${survey.submission_token}`}
-                        className={`text-[11px] font-bold px-3 py-2 rounded-xl text-white transition-all flex items-center gap-1 shadow-sm ${buttonColor}`}
-                      >
+                      <Link href={`/result/${survey.submission_token}`} className={`text-[11px] font-bold px-3 py-2 rounded-xl text-white transition-all flex items-center gap-1 shadow-sm ${buttonColor}`}>
                         📊 結果を見る
                       </Link>
-
                       {survey.event_id && (
-                        <Link
-                          href={`/p/${survey.event_id}/${survey.timing_type}`}
-                          className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white border border-orange-200 text-gray-600 hover:bg-orange-50 transition-colors flex items-center gap-1 shadow-sm"
-                        >
+                        <Link href={`/p/${survey.event_id}/${survey.timing_type}`} className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white border border-orange-200 text-gray-600 hover:bg-orange-50 transition-colors flex items-center gap-1 shadow-sm">
                           ✏️ やり直す
                         </Link>
                       )}
-
                       <span className="text-[11px] text-gray-400 bg-white px-2.5 py-2 rounded-xl border border-gray-100 font-medium ml-auto sm:ml-0">
                         {formatDateFull(survey.target_date)}
                       </span>
