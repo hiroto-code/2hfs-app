@@ -39,7 +39,7 @@ export default function PrivateLogPage() {
 
       if (newEvent && newEvent.id) {
         // 3. 作成されたイベントIDを使って、実際のアンケート回答画面へ自動遷移
-router.push(`/p/${newEvent.id}/post`);
+router.push(`/private-survey/${newEvent.id}`);
       }
 
     } catch (err: any) {
