@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../lib/supabase'; // パスがエラーになる場合は '../../../lib/supabase' 等に調整してください
+import { supabase } from '../../lib/supabase';
 
 export default function CreatePrivateEventPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   
-  // 今日の日付を初期値に設定 (YYYY-MM-DD)
   const [eventDate, setEventDate] = useState(() => {
     const today = new Date();
     today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
@@ -23,25 +22,20 @@ export default function CreatePrivateEventPage() {
     setLoading(true);
 
     try {
-      // 💡 ブラウザ側で正しいUUIDフォーマットのIDを生成する
       const eventId = crypto.randomUUID();
 
-      // データベースに新しいイベントを登録
+      // 💡 原因になりやすい重複カラムを削り、シンプルに送信します
       const { error } = await supabase
         .from('events')
         .insert([
           {
-            id: eventId,           // 生成したUUIDを明示的に指定
-            title: title,          // イベント名
-            event_name: title,     // 念のため両方のカラムに対応
-            event_date: eventDate, // 日付
-            date: eventDate,       // 念のため両方のカラムに対応
+            id: eventId,
+            title: title,  // イベント名（標準的なカラム名）
+            date: eventDate, // 日付（標準的なカラム名）
           }
         ]);
 
-      // Supabaseからエラーが返ってきたら、catchブロックへ飛ばす
       if (error) {
-        console.error('Supabase Error:', error);
         throw error;
       }
 
@@ -50,8 +44,8 @@ export default function CreatePrivateEventPage() {
 
     } catch (err: any) {
       console.error('イベントの作成に失敗しました:', err);
-      // 💡 エラーの詳細な理由を画面に表示するように変更
-      alert(`イベントの作成に失敗しました。\nエラー詳細: ${err.message || '不明なエラー'}`);
+      // 💡 エラーの中身（Object）をそのまま画面のアラートにテキストで表示します！
+      alert(`イベントの作成に失敗しました。\n\n【エラー詳細】\n${JSON.stringify(err, null, 2)}`);
       setLoading(false);
     }
   };
