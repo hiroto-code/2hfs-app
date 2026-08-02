@@ -82,12 +82,15 @@ export default function PrivateSurveyPage({ params }: { params: Promise<{ event_
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-3 md:p-6 font-sans bg-gray-50 min-h-screen">
+    <div className="max-w-2xl mx-auto p-3 md:p-6 font-sans bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 min-h-screen">
       
       {/* ヘッダー */}
-      <div className="p-5 md:p-6 rounded-3xl shadow-sm border border-indigo-100 mb-6 text-center bg-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl opacity-60 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
-        <h1 className="text-xl md:text-2xl font-black text-indigo-900 mb-2">
+      <div className="p-6 md:p-8 rounded-3xl shadow-xl border border-orange-100 mb-6 text-center bg-white relative overflow-hidden">
+        {/* 装飾用の背景円 */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-200 rounded-full blur-3xl opacity-40 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-200 rounded-full blur-3xl opacity-40 -z-10 transform -translate-x-1/2 translate-y-1/2"></div>
+        
+        <h1 className="text-xl md:text-2xl font-black text-gray-800 mb-3 tracking-tight">
           いまの「健幸度」を測定🌿
         </h1>
         <p className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed">
@@ -99,29 +102,29 @@ export default function PrivateSurveyPage({ params }: { params: Promise<{ event_
       <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
         
         {/* 凡例 */}
-        <div className="bg-white p-3 rounded-xl border border-gray-200 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2 justify-center shadow-sm">
+        <div className="bg-white p-3 rounded-xl border border-orange-100 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2 justify-center shadow-sm">
           {scaleOptions.map(opt => (
             <span key={opt.val} className="whitespace-nowrap">
-              <strong>{opt.val}</strong>: {opt.ja}
+              <strong className="text-orange-500">{opt.val}</strong>: {opt.ja}
             </span>
           ))}
         </div>
 
         {/* 質問リスト */}
         {domainQuestions?.map((group) => (
-          <div key={group.domainKey} className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100">
-            <h2 className="text-base md:text-lg font-bold text-indigo-900 border-b-2 border-indigo-50 pb-2 mb-4 flex items-center gap-2">
+          <div key={group.domainKey} className="bg-white p-5 md:p-8 rounded-3xl shadow-lg border border-orange-50">
+            <h2 className="text-base md:text-lg font-bold text-gray-800 border-b-2 border-orange-100 pb-2 mb-5 flex items-center gap-2">
               <span className="text-xl">✨</span>
               <span>{group.domainJa}</span>
             </h2>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               {group.items.map((item) => {
                 const qNum = item.index + 1;
                 return (
-                  <div key={item.index} className="space-y-2">
-                    <p className="font-bold text-gray-800 text-sm leading-snug">
-                      Q{qNum}. {item.textJa}
+                  <div key={item.index} className="space-y-3">
+                    <p className="font-bold text-gray-700 text-sm md:text-base leading-snug">
+                      <span className="text-orange-400 mr-1">Q{qNum}.</span> {item.textJa}
                     </p>
 
                     {/* 1〜5の選択肢ボタン */}
@@ -133,14 +136,14 @@ export default function PrivateSurveyPage({ params }: { params: Promise<{ event_
                             key={opt.val}
                             type="button"
                             onClick={() => handleScoreChange(item.index, opt.val)}
-                            className={`flex flex-col items-center justify-center py-2 px-1 md:p-2 rounded-xl border-2 transition-all text-center h-full ${
+                            className={`flex flex-col items-center justify-center py-2 px-1 md:p-2 rounded-2xl border-2 transition-all duration-200 text-center h-full ${
                               isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105'
-                                : 'bg-gray-50 text-gray-500 border-transparent hover:bg-gray-100 hover:border-gray-200'
+                                ? 'bg-orange-500 text-white border-orange-500 shadow-md transform scale-105'
+                                : 'bg-white text-gray-400 border-orange-50 hover:bg-orange-50 hover:border-orange-200 hover:text-gray-600 shadow-sm'
                             }`}
                           >
                             <span className="text-lg md:text-xl font-black mb-1">{opt.val}</span>
-                            <span className={`text-[9px] md:text-[10px] font-bold leading-tight block w-full break-words ${isSelected ? 'text-indigo-50' : 'text-gray-500'}`}>
+                            <span className={`text-[9px] md:text-[10px] font-bold leading-tight block w-full break-words ${isSelected ? 'text-orange-50' : 'text-gray-400'}`}>
                               {opt.ja}
                             </span>
                           </button>
@@ -155,18 +158,20 @@ export default function PrivateSurveyPage({ params }: { params: Promise<{ event_
         ))}
 
         {errorMsg && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-2xl border border-red-200 text-sm font-bold text-center shadow-sm">
+          <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl border border-rose-200 text-sm font-bold text-center shadow-sm">
             {errorMsg}
           </div>
         )}
 
         {/* 送信ボタン */}
-        <div className="pt-4 pb-12">
+        <div className="pt-6 pb-16">
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-4 rounded-2xl font-black text-white text-lg shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] ${
-              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-900 hover:bg-indigo-800'
+            className={`w-full py-4 rounded-2xl font-black text-white text-lg shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 ${
+              loading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-orange-400 to-rose-400 hover:from-orange-500 hover:to-rose-500'
             }`}
           >
             {loading ? '結果を生成中...' : '測定結果を見る ▶'}
