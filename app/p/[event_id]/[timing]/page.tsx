@@ -28,7 +28,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg];
 
   const isPost = timing === 'post';
 
@@ -239,18 +239,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             </div>
           </div>
 
-          {/* 凡例 */}
-          <div className="bg-white/80 p-3 rounded-2xl border border-orange-100 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2.5 justify-center shadow-sm">
-            {scaleOptions.map(opt => (
-              <span key={opt.val} className="whitespace-nowrap bg-orange-50/50 px-2.5 py-1 rounded-xl border border-orange-100/60">
-                <strong className="text-amber-700">{opt.val}</strong>: {opt.ja}
-              </span>
-            ))}
-          </div>
+          {/* 💡 ここにあった 1〜5 の凡例表示エリア（scaleOptionsのブロック）を削除しました！ */}
 
           {/* 質問リスト (6つの領域ごとにカラー適用) */}
           {domainQuestions?.map((group) => {
-            // ドメインキーに応じて背景・枠線・文字色を取得
             const style = domainStyles[group.domainKey] || { bg: 'bg-white', border: 'border-orange-100', title: 'text-amber-900' };
 
             return (
