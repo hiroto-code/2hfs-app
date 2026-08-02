@@ -2,7 +2,7 @@
 
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link'; // 👈 タブ切り替え用のLinkをインポート
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { domainQuestions, scaleOptions } from '@/lib/questions';
 
@@ -94,7 +94,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         submission_token
       };
 
-      // ▼ 今回追加：過去の自分の回答があれば確実に削除する（上書きのため） ▼
+      // 過去の自分の回答があれば確実に削除する（上書きのため）
       await supabase
         .from('surveys')
         .delete()
@@ -103,9 +103,8 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           participant_id: participantId.trim(), 
           timing_type: timing 
         });
-      // ▲ ここまで追加 ▲
 
-      // 新しい回答データを保存（削除済みなので通常のinsertとして処理されます）
+      // 新しい回答データを保存
       const { error } = await supabase
         .from('surveys')
         .insert(payload);
@@ -124,154 +123,160 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-3 md:p-6 font-sans bg-gray-50 min-h-screen">
-      
-      {/* 🔄 事前 / 事後 切り替えタブナビゲーション */}
-      <div className="bg-white p-1.5 rounded-2xl border border-gray-200 shadow-sm mb-4 flex gap-2">
-        <Link
-          href={`/p/${event_id}/pre`}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
-            !isPost
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'text-gray-500 hover:bg-gray-100'
-          }`}
-        >
-          <span>📋 事前アンケート</span>
-          <span className={`text-[10px] font-normal ${!isPost ? 'text-blue-100' : 'text-gray-400'}`}>
-            (Pre-event)
-          </span>
-        </Link>
-
-        <Link
-          href={`/p/${event_id}/post`}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
-            isPost
-              ? 'bg-green-600 text-white shadow-md'
-              : 'text-gray-500 hover:bg-gray-100'
-          }`}
-        >
-          <span>✨ 事後アンケート</span>
-          <span className={`text-[10px] font-normal ${isPost ? 'text-green-100' : 'text-gray-400'}`}>
-            (Post-event)
-          </span>
-        </Link>
-      </div>
-
-      {/* ヘッダー */}
-      <div className={`p-4 md:p-6 rounded-2xl shadow-sm border mb-4 text-center bg-white ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
-        <h1 className={`text-xl md:text-2xl font-bold ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
-          {isPost ? '事後アンケート' : '事前アンケート'}
-          <span className="block text-sm font-normal mt-1 text-gray-500">
-            {isPost ? 'Post-event Survey' : 'Pre-event Survey'}
-          </span>
-        </h1>
-        <p className="text-xs md:text-sm text-gray-600 mt-2">
-          直近のあなたの状態について、最もあてはまるものを直感でお選びください。
-          <span className="block text-[11px] md:text-xs text-gray-400 mt-0.5">
-            Please intuitively select the option that best describes your recent state.
-          </span>
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-3 md:p-6 font-sans">
+      <div className="max-w-2xl mx-auto">
         
-        {/* 参加者ID入力エリア */}
-        <div className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200">
-          <label className="block text-sm font-bold text-gray-800 mb-1">
-            参加者ID または ニックネーム <span className="text-red-500">*</span>
-            <span className="block text-xs font-normal text-gray-500">Participant ID or nickname</span>
-          </label>
-          <input
-            type="text"
-            required
-            value={participantId}
-            onChange={(e) => setParticipantId(e.target.value)}
-            placeholder="例: user001"
-            className="w-full mt-2 p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-base text-gray-800"
-          />
-          <div className="mt-2 p-2 bg-yellow-50 rounded-lg text-xs text-yellow-800 leading-relaxed">
-            <p className="font-bold">※事前・事後で同じIDをご入力ください。氏名やメールアドレスは入力しないでください。</p>
-            <p className="opacity-80">Please use the same ID before and after the activity. Do not enter your real name or email address.</p>
-          </div>
-        </div>
-
-        {/* 凡例 */}
-        <div className="bg-white p-3 rounded-xl border border-gray-200 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2 justify-center">
-          {scaleOptions.map(opt => (
-            <span key={opt.val} className="whitespace-nowrap">
-              <strong>{opt.val}</strong>: {opt.ja}
+        {/* 🔄 事前 / 事後 切り替えタブナビゲーション */}
+        <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-orange-100 shadow-sm mb-4 flex gap-2">
+          <Link
+            href={`/p/${event_id}/pre`}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+              !isPost
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                : 'text-gray-500 hover:bg-orange-50/50'
+            }`}
+          >
+            <span>📋 事前アンケート</span>
+            <span className={`text-[10px] font-normal ${!isPost ? 'text-amber-100' : 'text-gray-400'}`}>
+              (Pre-event)
             </span>
-          ))}
+          </Link>
+
+          <Link
+            href={`/p/${event_id}/post`}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+              isPost
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-gray-500 hover:bg-orange-50/50'
+            }`}
+          >
+            <span>✨ 事後アンケート</span>
+            <span className={`text-[10px] font-normal ${isPost ? 'text-emerald-100' : 'text-gray-400'}`}>
+              (Post-event)
+            </span>
+          </Link>
         </div>
 
-        {/* 質問リスト */}
-        {domainQuestions?.map((group) => (
-          <div key={group.domainKey} className="bg-white p-3 md:p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h2 className="text-base md:text-lg font-bold text-blue-900 border-b border-gray-100 pb-2 mb-3 flex items-center gap-2">
-              <span>{group.domainJa}</span>
-              <span className="text-xs font-normal text-gray-400">/ {group.domainEn}</span>
-            </h2>
+        {/* ヘッダー */}
+        <div className={`p-5 md:p-6 rounded-3xl shadow-md border mb-5 text-center bg-white/90 backdrop-blur-md ${isPost ? 'border-emerald-200' : 'border-orange-200'}`}>
+          <h1 className={`text-xl md:text-2xl font-black ${isPost ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {isPost ? '事後アンケート ✨' : '事前アンケート 📋'}
+            <span className="block text-xs md:text-sm font-medium mt-1 text-gray-500">
+              {isPost ? 'Post-event Survey' : 'Pre-event Survey'}
+            </span>
+          </h1>
+          <p className="text-xs md:text-sm text-gray-600 mt-2 font-medium">
+            直近のあなたの状態について、最もあてはまるものを直感でお選びください。
+            <span className="block text-[11px] md:text-xs text-gray-400 mt-0.5 font-normal">
+              Please intuitively select the option that best describes your recent state.
+            </span>
+          </p>
+        </div>
 
-            <div className="space-y-4 md:space-y-5">
-              {group.items.map((item) => {
-                const qNum = item.index + 1;
-                return (
-                  <div key={item.index} className="space-y-1.5">
-                    <p className="font-bold text-gray-800 text-sm leading-snug">
-                      Q{qNum}. {item.textJa}
-                      <span className="block text-[11px] font-normal text-gray-500 mt-0.5 leading-tight">{item.textEn}</span>
-                    </p>
-
-                    {/* 1〜5の選択肢ボタン */}
-                    <div className="grid grid-cols-5 gap-1 pt-1">
-                      {scaleOptions.map((opt) => {
-                        const isSelected = answers[item.index] === opt.val;
-                        return (
-                          <button
-                            key={opt.val}
-                            type="button"
-                            onClick={() => handleScoreChange(item.index, opt.val)}
-                            className={`flex flex-col items-center justify-start p-1.5 md:p-2 rounded-lg border transition-all text-center h-full ${
-                              isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                            }`}
-                          >
-                            <span className="text-sm md:text-base font-black leading-none mb-1">{opt.val}</span>
-                            <span className={`text-[9px] md:text-[10px] font-medium leading-tight block w-full break-words ${isSelected ? 'text-white' : 'text-gray-700'}`}>
-                              {opt.ja}
-                            </span>
-                            <span className={`text-[8px] md:text-[9px] leading-tight block w-full mt-0.5 opacity-80 break-words ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}>
-                              {opt.en}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+          
+          {/* 参加者ID入力エリア */}
+          <div className="bg-white p-5 rounded-3xl shadow-md border border-orange-100">
+            <label className="block text-sm font-bold text-gray-800 mb-1">
+              参加者ID または ニックネーム <span className="text-rose-500">*</span>
+              <span className="block text-xs font-normal text-gray-500">Participant ID or nickname</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={participantId}
+              onChange={(e) => setParticipantId(e.target.value)}
+              placeholder="例: user001"
+              className="w-full mt-2 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
+            />
+            <div className="mt-3 p-3 bg-amber-50/80 rounded-2xl border border-amber-200/60 text-xs text-amber-900 leading-relaxed">
+              <p className="font-bold">※事前・事後で同じIDをご入力ください。氏名やメールアドレスは入力しないでください。</p>
+              <p className="opacity-80 mt-0.5">Please use the same ID before and after the activity. Do not enter your real name or email address.</p>
             </div>
           </div>
-        ))}
 
-        {errorMsg && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-sm font-bold text-center">
-            {errorMsg}
+          {/* 凡例 */}
+          <div className="bg-white/80 p-3 rounded-2xl border border-orange-100 text-[10px] md:text-xs text-gray-600 flex flex-wrap gap-2.5 justify-center shadow-sm">
+            {scaleOptions.map(opt => (
+              <span key={opt.val} className="whitespace-nowrap bg-orange-50/50 px-2.5 py-1 rounded-xl border border-orange-100/60">
+                <strong className="text-amber-700">{opt.val}</strong>: {opt.ja}
+              </span>
+            ))}
           </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-3.5 md:py-4 rounded-xl font-bold text-white text-base md:text-lg shadow-md transition-all ${
-            isPost ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
-          } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {loading ? '送信中... / Submitting...' : isPost ? '事後アンケートを送信する' : '事前アンケートを送信する'}
-        </button>
+          {/* 質問リスト */}
+          {domainQuestions?.map((group) => (
+            <div key={group.domainKey} className="bg-white p-4 md:p-6 rounded-3xl shadow-md border border-orange-100">
+              <h2 className="text-base md:text-lg font-bold text-amber-900 border-b border-orange-100 pb-2.5 mb-4 flex items-center gap-2">
+                <span>{group.domainJa}</span>
+                <span className="text-xs font-normal text-gray-400">/ {group.domainEn}</span>
+              </h2>
 
-      </form>
+              <div className="space-y-5 md:space-y-6">
+                {group.items.map((item) => {
+                  const qNum = item.index + 1;
+                  return (
+                    <div key={item.index} className="space-y-2">
+                      <p className="font-bold text-gray-800 text-sm leading-snug">
+                        Q{qNum}. {item.textJa}
+                        <span className="block text-[11px] font-normal text-gray-500 mt-0.5 leading-tight">{item.textEn}</span>
+                      </p>
+
+                      {/* 1〜5の選択肢ボタン */}
+                      <div className="grid grid-cols-5 gap-1.5 pt-1">
+                        {scaleOptions.map((opt) => {
+                          const isSelected = answers[item.index] === opt.val;
+                          return (
+                            <button
+                              key={opt.val}
+                              type="button"
+                              onClick={() => handleScoreChange(item.index, opt.val)}
+                              className={`flex flex-col items-center justify-start p-2 rounded-2xl border transition-all text-center h-full active:scale-95 ${
+                                isSelected
+                                  ? isPost
+                                    ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md transform scale-[1.02]'
+                                    : 'bg-gradient-to-b from-amber-500 to-orange-500 text-white border-orange-500 shadow-md transform scale-[1.02]'
+                                  : 'bg-orange-50/30 text-gray-700 border-orange-100 hover:bg-orange-100/50'
+                              }`}
+                            >
+                              <span className="text-base md:text-lg font-black leading-none mb-1.5">{opt.val}</span>
+                              <span className={`text-[9px] md:text-[10px] font-bold leading-tight block w-full break-words ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                                {opt.ja}
+                              </span>
+                              <span className={`text-[8px] md:text-[9px] leading-tight block w-full mt-0.5 opacity-80 break-words ${isSelected ? 'text-amber-100' : 'text-gray-400'}`}>
+                                {opt.en}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {errorMsg && (
+            <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl border border-rose-200 text-sm font-bold text-center shadow-sm">
+              {errorMsg}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${
+              isPost 
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700' 
+                : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+            } ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+          >
+            {loading ? '送信中... / Submitting...' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
+          </button>
+
+        </form>
+      </div>
     </div>
   );
 }
