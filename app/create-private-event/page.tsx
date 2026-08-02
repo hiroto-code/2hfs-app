@@ -23,28 +23,35 @@ export default function CreatePrivateEventPage() {
     setLoading(true);
 
     try {
-      // データベースに新しいイベントを登録し、正式なID(UUID)を自動生成して取得する
-      const { data, error } = await supabase
+      // 💡 ブラウザ側で正しいUUIDフォーマットのIDを生成する
+      const eventId = crypto.randomUUID();
+
+      // データベースに新しいイベントを登録
+      const { error } = await supabase
         .from('events')
         .insert([
           {
+            id: eventId,           // 生成したUUIDを明示的に指定
             title: title,          // イベント名
             event_name: title,     // 念のため両方のカラムに対応
             event_date: eventDate, // 日付
             date: eventDate,       // 念のため両方のカラムに対応
           }
-        ])
-        .select('id') // ← ここで生成されたUUIDを受け取る
-        .single();
+        ]);
 
-      if (error) throw error;
+      // Supabaseからエラーが返ってきたら、catchブロックへ飛ばす
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw error;
+      }
 
       // 取得した正式なUUIDを使って、事前アンケート(2HFS)へ遷移
-      router.push(`/p/${data.id}/pre`);
+      router.push(`/p/${eventId}/pre`);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('イベントの作成に失敗しました:', err);
-      alert('イベントの作成に失敗しました。');
+      // 💡 エラーの詳細な理由を画面に表示するように変更
+      alert(`イベントの作成に失敗しました。\nエラー詳細: ${err.message || '不明なエラー'}`);
       setLoading(false);
     }
   };
