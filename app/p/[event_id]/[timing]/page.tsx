@@ -28,7 +28,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg];
+  const [errorMsg, setErrorMsg] = useState(''); // 💡 修正箇所
 
   const isPost = timing === 'post';
 
@@ -238,8 +238,6 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
               <p className="opacity-80 mt-0.5">※入力した情報はブラウザに記憶され、次回から自動入力されます。</p>
             </div>
           </div>
-
-          {/* 💡 ここにあった 1〜5 の凡例表示エリア（scaleOptionsのブロック）を削除しました！ */}
 
           {/* 質問リスト (6つの領域ごとにカラー適用) */}
           {domainQuestions?.map((group) => {
