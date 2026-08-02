@@ -5,11 +5,9 @@ import { supabase } from '../../../lib/supabase';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
 import Link from 'next/link';
 
-// 各項目の文字位置を調整するカスタムTick
 const CustomAngleAxisTick = (props: any) => {
   const { x, y, payload, textAnchor } = props;
   const lines = payload.value.split('\n');
-
   const isKaishoku = payload.value.includes('快食');
   const isKaisho = payload.value.includes('快笑');
 
@@ -17,7 +15,6 @@ const CustomAngleAxisTick = (props: any) => {
     <text x={x} y={y} textAnchor={textAnchor}>
       {lines.map((line: string, index: number) => {
         const isJapanese = index === 0;
-        
         let dy = isJapanese ? -4 : 15;
         if (isKaishoku) {
           dy = isJapanese ? -20 : 13;
@@ -47,11 +44,13 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   const [surveyData, setSurveyData] = useState<any>(null);
   const [preSurveyData, setPreSurveyData] = useState<any>(null);
   const [groupAvgData, setGroupAvgData] = useState<any>(null);
-  const [displayName, setDisplayName] = useState<string>(''); // 表示用ニックネーム
+  const [displayName, setDisplayName] = useState<string>(''); 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+  
+  // 💡 プライベートイベント判定用のステート
+  const [isPrivate, setIsPrivate] = useState(false);
 
-  // メール登録フォーム用ステート
   const [email, setEmail] = useState("");
   const [registering, setRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -60,7 +59,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   useEffect(() => {
     const fetchResult = async () => {
       try {
-        // 1. 本人の回答データを取得
         const { data: currentData, error: currentError } = await supabase
           .from('surveys')
           .select('*')
@@ -76,7 +74,24 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        // 既にメール登録済みか、プロフィール情報をチェック
+        // 💡 イベント情報を取得し、プライベートかどうかを判定
+        let privateFlag = false;
+        if (currentData.event_id) {
+          const { data: eventData } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', currentData.event_id)
+            .maybeSingle();
+            
+          if (eventData) {
+            const rawTitle = eventData.title || eventData.event_name || '';
+            if (rawTitle.includes('【プライベート】')) {
+              privateFlag = true;
+              setIsPrivate(true);
+            }
+          }
+        }
+
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('*')
@@ -97,8 +112,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           setDisplayName(currentData.participant_id);
         }
 
-        // 2. 本人の事前データを取得（事後アンケートの場合）
-        if (currentData.timing_type === 'post') {
+        if (!privateFlag && currentData.timing_type === 'post') {
           const { data: preData } = await supabase
             .from('surveys')
             .select('*')
@@ -110,30 +124,32 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           if (preData) setPreSurveyData(preData);
         }
 
-        // 3. 同じイベント全体の事後平均データを取得
-        const { data: allEventPostSurveys } = await supabase
-          .from('surveys')
-          .select('*')
-          .eq('event_id', currentData.event_id)
-          .eq('timing_type', currentData.timing_type);
+        // 💡 プライベートイベントの時は全体平均を計算・表示しない
+        if (!privateFlag) {
+          const { data: allEventPostSurveys } = await supabase
+            .from('surveys')
+            .select('*')
+            .eq('event_id', currentData.event_id)
+            .eq('timing_type', currentData.timing_type);
 
-        if (allEventPostSurveys && allEventPostSurveys.length > 0) {
-          const calcAvg = (key: string) => {
-            const sum = allEventPostSurveys.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
-            return Number((sum / allEventPostSurveys.length).toFixed(2));
-          };
+          if (allEventPostSurveys && allEventPostSurveys.length > 0) {
+            const calcAvg = (key: string) => {
+              const sum = allEventPostSurveys.reduce((acc, curr) => acc + (Number(curr[key]) || 0), 0);
+              return Number((sum / allEventPostSurveys.length).toFixed(2));
+            };
 
-          setGroupAvgData({
-            kaishoku: calcAvg('domain_kaishoku'),
-            kaimin: calcAvg('domain_kaimin'),
-            kaido: calcAvg('domain_kaido'),
-            kaisho: calcAvg('domain_kaisho'),
-            kairaku: calcAvg('domain_kairaku'),
-            kaisei: calcAvg('domain_kaisei'),
-            total_mean: calcAvg('total_mean'),
-            total_sum: calcAvg('total_sum'),
-            count: allEventPostSurveys.length
-          });
+            setGroupAvgData({
+              kaishoku: calcAvg('domain_kaishoku'),
+              kaimin: calcAvg('domain_kaimin'),
+              kaido: calcAvg('domain_kaido'),
+              kaisho: calcAvg('domain_kaisho'),
+              kairaku: calcAvg('domain_kairaku'),
+              kaisei: calcAvg('domain_kaisei'),
+              total_mean: calcAvg('total_mean'),
+              total_sum: calcAvg('total_sum'),
+              count: allEventPostSurveys.length
+            });
+          }
         }
 
       } catch (err: any) {
@@ -147,7 +163,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     fetchResult();
   }, [submission_token]);
 
-  // メールアドレス登録処理（同一イベント・同一タイミングの衝突を防いで上書き統合する）
   const handleRegisterEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !surveyData) return;
@@ -157,11 +172,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
     try {
       const cleanEmail = email.trim().toLowerCase();
-
-      // 保存するニックネーム（メールアドレスの形式でなければ採用）
       const nicknameToSave = displayName && !displayName.includes('@') ? displayName : displayName.split('@')[0];
 
-      // 1. user_profiles にメアドと表示名(display_name)を保存
       const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
           participant_id: cleanEmail,
@@ -171,12 +183,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         { onConflict: 'email' }
       );
 
-      if (profileError) {
-        console.error("Profile Error:", profileError);
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
-      // 2. 既に同じメールアドレスで「同じイベント」かつ「同じ時期（事前/事後）」のデータが存在する場合は古い方を削除して重複衝突を防ぐ (.neq に修正)
       await supabase
         .from('surveys')
         .delete()
@@ -185,18 +193,13 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         .eq('participant_id', cleanEmail)
         .neq('submission_token', submission_token);
 
-      // 3. 今回のアンケート回答データの participant_id をメアドに更新
       const { error: surveyError } = await supabase
         .from('surveys')
         .update({ participant_id: cleanEmail })
         .eq('submission_token', submission_token);
 
-      if (surveyError) {
-        console.error("Survey Update Error:", surveyError);
-        throw surveyError;
-      }
+      if (surveyError) throw surveyError;
 
-      // 4. 元の仮IDで登録されていた過去データの一括統合（衝突回避処理付き）
       if (surveyData.participant_id && surveyData.participant_id !== cleanEmail) {
         const { data: oldSurveys } = await supabase
           .from('surveys')
@@ -223,7 +226,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         }
       }
 
-      // 画面上のデータ更新
       setSurveyData((prev: any) => ({ ...prev, participant_id: cleanEmail }));
       setDisplayName(nicknameToSave);
       setIsRegistered(true);
@@ -241,7 +243,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-xl font-bold text-gray-600 text-center">
           読み込み中...
-          <div className="text-sm text-gray-400 font-normal mt-2">Loading...</div>
         </div>
       </div>
     );
@@ -252,7 +253,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="bg-red-100 text-red-700 p-6 rounded-xl text-center shadow-sm max-w-md w-full">
           <p className="font-bold mb-2">{errorMsg || "データが見つかりません。"}</p>
-          <p className="text-sm font-normal opacity-80">Data not found.</p>
         </div>
       </div>
     );
@@ -270,28 +270,33 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     { subject: '快生\n(Living Well)', score: surveyData.domain_kaisei, preScore: preSurveyData?.domain_kaisei, groupAvg: groupAvgData?.kaisei },
   ];
 
+  // 💡 プライベートイベント用のカラー設定を動的に割り当て
+  const headerBgClass = isPrivate ? 'bg-purple-100 text-purple-700' : (isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
+  const borderClass = isPrivate ? 'border-purple-200' : (isPost ? 'border-green-200' : 'border-blue-200');
+  const textClass = isPrivate ? 'text-purple-600' : (isPost ? 'text-green-600' : 'text-blue-600');
+  const cardBgClass = isPrivate ? 'bg-purple-50 border-purple-100' : (isPost ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100');
+  const radarColor = isPrivate ? '#8b5cf6' : (isPost ? '#10b981' : '#3b82f6');
+  const radarName = isPrivate ? "自分 (Your Score)" : (isPost ? "自分: 事後 (Post)" : "自分: 事前 (Pre)");
+
   return (
     <div className="max-w-3xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
       
       {/* メッセージヘッダー */}
-      <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${isPost ? 'border-green-200' : 'border-blue-200'}`}>
-        
-        {/* 参加者ID / ニックネームの表示 */}
+      <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${borderClass}`}>
         <div className="absolute top-4 left-4">
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${headerBgClass}`}>
             ID: {displayName || surveyData.participant_id}
           </span>
         </div>
 
-        <h1 className={`text-2xl font-bold mb-2 mt-4 ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
-          {isPost ? '事後アンケート完了' : '事前アンケート完了'}
+        <h1 className={`text-2xl font-bold mb-2 mt-4 ${textClass}`}>
+          {isPrivate ? 'プライベート記録 完了' : (isPost ? '事後アンケート完了' : '事前アンケート完了')}
           <span className="block text-base font-normal mt-1 opacity-80">
-            {isPost ? 'Post-event Survey Completed' : 'Pre-event Survey Completed'}
+            {isPrivate ? 'Private Record Completed' : (isPost ? 'Post-event Survey Completed' : 'Pre-event Survey Completed')}
           </span>
         </h1>
         <p className="text-gray-600 font-medium mt-4">
           ご回答ありがとうございました！あなたの健幸度の結果です。
-          <span className="block text-sm text-gray-400 font-normal mt-1">Thank you! Here is your score result.</span>
         </p>
       </div>
 
@@ -299,7 +304,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-800 border-b-2 border-gray-100 pb-4">
           {displayName || surveyData.participant_id} さんの健幸度の結果
-          <span className="block text-sm text-gray-500 font-normal mt-1">Your Well-being Balance</span>
         </h2>
 
         {/* レーダーチャート */}
@@ -324,18 +328,18 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
               {hasPreData && (
                 <Radar name="自分: 事前 (Pre)" dataKey="preScore" stroke="#9ca3af" strokeWidth={2} fill="transparent" />
               )}
-              {groupAvgData && (
-                <Radar name={`全体平均 (Group Avg, N=${groupAvgData.count})`} dataKey="groupAvg" stroke="#8b5cf6" strokeDasharray="4 4" strokeWidth={2} fill="transparent" />
+              {groupAvgData && !isPrivate && (
+                <Radar name={`全体平均 (Group Avg, N=${groupAvgData.count})`} dataKey="groupAvg" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={2} fill="transparent" />
               )}
-              <Radar name={isPost ? "自分: 事後 (Post)" : "自分: 事前 (Pre)"} dataKey="score" stroke={isPost ? "#10b981" : "#3b82f6"} strokeWidth={2.5} fill="transparent" />
+              <Radar name={radarName} dataKey="score" stroke={radarColor} strokeWidth={2.5} fill="transparent" />
             </RadarChart>
           </ResponsiveContainer>
         </div>
 
         {/* スコア詳細比較 */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`p-4 rounded-xl text-center border ${isPost ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'}`}>
-            <div className={`text-sm font-bold mb-3 ${isPost ? 'text-green-800' : 'text-blue-800'}`}>
+          <div className={`p-4 rounded-xl text-center border ${cardBgClass}`}>
+            <div className={`text-sm font-bold mb-3 ${textClass}`}>
               総合平均点 <span className="text-xs font-normal opacity-70">Total Mean</span>
             </div>
             <div className="flex justify-center items-center gap-3">
@@ -349,25 +353,25 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 </>
               )}
               <div className="text-center">
-                <div className={`text-xs font-bold mb-1 ${isPost ? 'text-green-600' : 'text-blue-600'}`}>自分 Your Score</div>
-                <div className={`text-2xl font-black ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
+                <div className={`text-xs font-bold mb-1 ${textClass}`}>自分 Your Score</div>
+                <div className={`text-2xl font-black ${textClass}`}>
                   {Number(surveyData.total_mean).toFixed(2)}
                 </div>
               </div>
-              {groupAvgData && (
+              {groupAvgData && !isPrivate && (
                 <>
                   <div className="text-gray-300 font-bold">/</div>
                   <div className="text-center">
-                    <div className="text-xs text-purple-600 font-bold mb-1">全体 Group</div>
-                    <div className="text-2xl font-black text-purple-600">{groupAvgData.total_mean.toFixed(2)}</div>
+                    <div className="text-xs text-orange-500 font-bold mb-1">全体 Group</div>
+                    <div className="text-2xl font-black text-orange-500">{groupAvgData.total_mean.toFixed(2)}</div>
                   </div>
                 </>
               )}
             </div>
           </div>
 
-          <div className={`p-4 rounded-xl text-center border ${isPost ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'}`}>
-            <div className={`text-sm font-bold mb-3 ${isPost ? 'text-green-800' : 'text-blue-800'}`}>
+          <div className={`p-4 rounded-xl text-center border ${cardBgClass}`}>
+            <div className={`text-sm font-bold mb-3 ${textClass}`}>
               総合合計点 <span className="text-xs font-normal opacity-70">Total Sum</span>
             </div>
             <div className="flex justify-center items-center gap-3">
@@ -381,17 +385,17 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 </>
               )}
               <div className="text-center">
-                <div className={`text-xs font-bold mb-1 ${isPost ? 'text-green-600' : 'text-blue-600'}`}>自分 Your Score</div>
-                <div className={`text-2xl font-black ${isPost ? 'text-green-600' : 'text-blue-600'}`}>
+                <div className={`text-xs font-bold mb-1 ${textClass}`}>自分 Your Score</div>
+                <div className={`text-2xl font-black ${textClass}`}>
                   {surveyData.total_sum}
                 </div>
               </div>
-              {groupAvgData && (
+              {groupAvgData && !isPrivate && (
                 <>
                   <div className="text-gray-300 font-bold">/</div>
                   <div className="text-center">
-                    <div className="text-xs text-purple-600 font-bold mb-1">全体 Group</div>
-                    <div className="text-2xl font-black text-purple-600">{groupAvgData.total_sum.toFixed(1)}</div>
+                    <div className="text-xs text-orange-500 font-bold mb-1">全体 Group</div>
+                    <div className="text-2xl font-black text-orange-500">{groupAvgData.total_sum.toFixed(1)}</div>
                   </div>
                 </>
               )}
@@ -401,48 +405,60 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       </div>
 
       {/* メール登録 ＆ マイページ案内カード */}
-      <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 rounded-2xl shadow-sm border border-indigo-100">
+      <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 md:p-8 rounded-2xl shadow-md border border-indigo-100 relative overflow-hidden">
+        {/* 装飾用の背景円 */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+
         {!isRegistered ? (
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">RECOMMEND</span>
-              <h3 className="text-lg font-bold text-gray-800">今回のスコアを保存してマイページを作成する</h3>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
+                無料登録で保存
+              </span>
+              <h3 className="text-xl font-bold text-gray-800">今回のスコアを保存しよう！</h3>
             </div>
-            <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-              メールアドレスを登録すると、過去の体験ログの比較や、SUPwellからの次回イベントのご案内を受け取ることができます。
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed font-medium">
+              メールアドレスを登録して自分専用のマイダッシュボードを作成すると、<span className="text-indigo-600 font-bold">グラフで日々の変化を振り返る</span>ことができます。（登録は無料です）
             </p>
 
             <form onSubmit={handleRegisterEmail} className="flex flex-col sm:flex-row gap-3">
               <input
                 type="email"
                 required
-                placeholder="example@email.com"
+                placeholder="メールアドレスを入力 (例: user@supwell.jp)"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white"
+                className="flex-1 px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
               />
               <button
                 type="submit"
                 disabled={registering}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl shadow-sm text-sm transition-colors disabled:opacity-50 whitespace-nowrap"
+                className="bg-gray-900 hover:bg-black text-white font-bold px-6 py-3.5 rounded-xl shadow-md text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 whitespace-nowrap"
               >
-                {registering ? '保存中...' : 'スコアを保存して登録'}
+                {registering ? '保存中...' : '結果を保存する ✨'}
               </button>
             </form>
-            {regError && <p className="text-xs text-red-500 mt-2 font-bold">{regError}</p>}
+            {regError && <p className="text-xs text-red-500 mt-3 font-bold bg-red-50 p-2 rounded-md">{regError}</p>}
+            
+            <p className="text-[11px] text-gray-400 mt-4 text-center">
+              ※すでにアカウントをお持ちの方は、同じアドレスを入力するとデータが統合されます。
+            </p>
           </div>
         ) : (
-          <div className="text-center py-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full mb-3 text-xl font-bold">
+          <div className="text-center py-4 relative z-10">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-green-400 to-emerald-500 text-white rounded-full mb-4 text-2xl font-black shadow-md">
               ✓
             </div>
-            <h3 className="text-lg font-bold text-gray-800 mb-1">スコアが保存・統合されました！</h3>
-            <p className="text-sm text-gray-500 mb-4">マイページから過去の経時ログやイベント記録を確認できます。</p>
+            <h3 className="text-xl font-black text-gray-800 mb-2">スコアが保存されました！</h3>
+            <p className="text-sm text-gray-500 mb-6 font-medium">
+              グラフが追加された、あなた専用のマイダッシュボードを確認してみましょう。
+            </p>
             <Link
               href={`/my/${encodeURIComponent(surveyData.participant_id)}`}
-              className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl shadow-sm text-sm transition-colors"
+              className="inline-block bg-gray-900 hover:bg-black text-white font-bold px-8 py-3.5 rounded-xl shadow-md text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98]"
             >
-              あなたのマイページを開く ▶
+              📊 マイダッシュボードを開く
             </Link>
           </div>
         )}
