@@ -28,9 +28,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(''); // 💡 修正箇所
+  const [errorMsg, setErrorMsg] = useState('');
 
   const isPost = timing === 'post';
+  const isPrivate = timing === 'private';
 
   // 💡 初回読み込み時：過去に入力した情報をブラウザから復元
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         submission_token
       };
 
-      // 事前・事後の上書き用（過去データを削除）
+      // 事前・事後・プライベートの上書き用（過去データを削除）
       await supabase
         .from('surveys')
         .delete()
@@ -149,47 +150,58 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     }
   };
 
+  // テーマ色設定
+  const headerBorder = isPrivate ? 'border-purple-200' : isPost ? 'border-emerald-200' : 'border-orange-200';
+  const headerTitleColor = isPrivate ? 'text-purple-800' : isPost ? 'text-emerald-700' : 'text-amber-700';
+  const submitBtnBg = isPrivate 
+    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+    : isPost 
+    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700' 
+    : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-3 md:p-6 font-sans">
       <div className="max-w-2xl mx-auto">
         
-        {/* 🔄 事前 / 事後 切り替えタブナビゲーション */}
-        <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-orange-100 shadow-sm mb-4 flex gap-2">
-          <Link
-            href={`/p/${event_id}/pre`}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
-              !isPost
-                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                : 'text-gray-500 hover:bg-orange-50/50'
-            }`}
-          >
-            <span>📋 事前アンケート</span>
-            <span className={`text-[10px] font-normal ${!isPost ? 'text-amber-100' : 'text-gray-400'}`}>
-              (Pre-event)
-            </span>
-          </Link>
+        {/* 🔄 事前 / 事後 切り替えタブナビゲーション (プライベートでない時のみ表示) */}
+        {!isPrivate && (
+          <div className="bg-white/90 backdrop-blur-md p-1.5 rounded-2xl border border-orange-100 shadow-sm mb-4 flex gap-2">
+            <Link
+              href={`/p/${event_id}/pre`}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                !isPost
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                  : 'text-gray-500 hover:bg-orange-50/50'
+              }`}
+            >
+              <span>📋 事前アンケート</span>
+              <span className={`text-[10px] font-normal ${!isPost ? 'text-amber-100' : 'text-gray-400'}`}>
+                (Pre-event)
+              </span>
+            </Link>
 
-          <Link
-            href={`/p/${event_id}/post`}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
-              isPost
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
-                : 'text-gray-500 hover:bg-orange-50/50'
-            }`}
-          >
-            <span>✨ 事後アンケート</span>
-            <span className={`text-[10px] font-normal ${isPost ? 'text-emerald-100' : 'text-gray-400'}`}>
-              (Post-event)
-            </span>
-          </Link>
-        </div>
+            <Link
+              href={`/p/${event_id}/post`}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs md:text-sm font-bold text-center transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                isPost
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                  : 'text-gray-500 hover:bg-orange-50/50'
+              }`}
+            >
+              <span>✨ 事後アンケート</span>
+              <span className={`text-[10px] font-normal ${isPost ? 'text-emerald-100' : 'text-gray-400'}`}>
+                (Post-event)
+              </span>
+            </Link>
+          </div>
+        )}
 
         {/* ヘッダー */}
-        <div className={`p-5 md:p-6 rounded-3xl shadow-md border mb-5 text-center bg-white/90 backdrop-blur-md ${isPost ? 'border-emerald-200' : 'border-orange-200'}`}>
-          <h1 className={`text-xl md:text-2xl font-black ${isPost ? 'text-emerald-700' : 'text-amber-700'}`}>
-            {isPost ? '事後アンケート ✨' : '事前アンケート 📋'}
+        <div className={`p-5 md:p-6 rounded-3xl shadow-md border mb-5 text-center bg-white/90 backdrop-blur-md ${headerBorder}`}>
+          <h1 className={`text-xl md:text-2xl font-black ${headerTitleColor}`}>
+            {isPrivate ? 'プライベート健幸度チェック 🌿' : isPost ? '事後アンケート ✨' : '事前アンケート 📋'}
             <span className="block text-xs md:text-sm font-medium mt-1 text-gray-500">
-              {isPost ? 'Post-event Survey' : 'Pre-event Survey'}
+              {isPrivate ? 'Private Well-being Check' : isPost ? 'Post-event Survey' : 'Pre-event Survey'}
             </span>
           </h1>
           <p className="text-xs md:text-sm text-gray-600 mt-2 font-medium">
@@ -267,6 +279,14 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                         <div className="grid grid-cols-5 gap-1.5 pt-1">
                           {scaleOptions.map((opt) => {
                             const isSelected = answers[item.index] === opt.val;
+                            
+                            // 選択時ボタンの色定義
+                            const selectedBtnClass = isPrivate
+                              ? 'bg-gradient-to-b from-purple-600 to-indigo-600 text-white border-purple-600 shadow-md transform scale-[1.02]'
+                              : isPost
+                              ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md transform scale-[1.02]'
+                              : 'bg-gradient-to-b from-amber-500 to-orange-500 text-white border-orange-500 shadow-md transform scale-[1.02]';
+
                             return (
                               <button
                                 key={opt.val}
@@ -274,9 +294,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                                 onClick={() => handleScoreChange(item.index, opt.val)}
                                 className={`flex flex-col items-center justify-start p-2 rounded-2xl border transition-all text-center h-full active:scale-95 ${
                                   isSelected
-                                    ? isPost
-                                      ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md transform scale-[1.02]'
-                                      : 'bg-gradient-to-b from-amber-500 to-orange-500 text-white border-orange-500 shadow-md transform scale-[1.02]'
+                                    ? selectedBtnClass
                                     : 'bg-white/80 text-gray-700 border-gray-200/80 hover:bg-white'
                                 }`}
                               >
@@ -284,7 +302,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                                 <span className={`text-[9px] md:text-[10px] font-bold leading-tight block w-full break-words ${isSelected ? 'text-white' : 'text-gray-700'}`}>
                                   {opt.ja}
                                 </span>
-                                <span className={`text-[8px] md:text-[9px] leading-tight block w-full mt-0.5 opacity-80 break-words ${isSelected ? 'text-amber-100' : 'text-gray-400'}`}>
+                                <span className={`text-[8px] md:text-[9px] leading-tight block w-full mt-0.5 opacity-80 break-words ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                                   {opt.en}
                                 </span>
                               </button>
@@ -308,13 +326,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${
-              isPost 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700' 
-                : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-            } ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+            className={`w-full py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${submitBtnBg} ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
           >
-            {loading ? '送信中... / Submitting...' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
+            {loading ? '送信中... / Submitting...' : isPrivate ? '記録を保存する 🌿' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
           </button>
 
         </form>
