@@ -137,221 +137,230 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8 font-sans min-h-screen bg-gray-50">
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">2HFS 管理者ダッシュボード</h1>
-        <p className="text-sm text-gray-500 mt-1">アンケートイベントの作成および回答状況・URLの管理ができます。</p>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
+      <div className="max-w-5xl mx-auto">
+        
+        <header className="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-orange-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full blur-3xl opacity-60 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight">管理者ダッシュボード 🌿</h1>
+          <p className="text-sm text-gray-500 mt-2 font-medium">アンケートイベントの作成および回答状況・URLの管理ができます。</p>
+        </header>
 
-      {/* 新規イベント作成フォーム */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">新規イベントの作成</h2>
-        <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div className="md:col-span-1">
-            <label className="block text-xs font-bold text-gray-600 mb-1">イベント名</label>
-            <input
-              type="text"
-              placeholder="例: SUPwell@狩野川"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-600 mb-1">開催日程 (任意)</label>
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition-colors shadow-sm"
-            >
-              作成する
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* 新規イベント作成フォーム */}
+        <div className="bg-white p-6 rounded-3xl border border-orange-100 shadow-lg mb-8 relative z-10">
+          <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
+            <span className="text-xl">✨</span> 新規イベントの作成
+          </h2>
+          <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="md:col-span-1">
+              <label className="block text-xs font-bold text-gray-600 mb-2">イベント名</label>
+              <input
+                type="text"
+                placeholder="例: SUPwell@狩野川"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                className="w-full px-4 py-3 bg-white border-2 border-orange-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none transition-all shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-2">開催日程 (任意)</label>
+              <input
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="w-full px-4 py-3 bg-white border-2 border-orange-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-orange-400 focus:border-orange-400 outline-none transition-all shadow-sm text-gray-700"
+              />
+            </div>
+            <div>
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-orange-400 to-rose-400 hover:from-orange-500 hover:to-rose-500 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-md"
+              >
+                作成する ▶
+              </button>
+            </div>
+          </form>
+        </div>
 
-      {/* 作成済みイベント一覧 */}
-      <div className="space-y-6">
-        <h2 className="text-lg font-bold text-gray-800">作成済みイベント一覧</h2>
+        {/* 作成済みイベント一覧 */}
+        <div className="space-y-6">
+          <h2 className="text-lg font-bold text-gray-800 ml-2">作成済みイベント一覧</h2>
 
-        {loading ? (
-          <div className="text-center py-8 text-gray-400 font-bold">読み込み中...</div>
-        ) : events.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl border text-center text-gray-400 text-sm">
-            イベントがまだ登録されていません。
-          </div>
-        ) : (
-          events.map((ev) => {
-            // ⭕️ URL修正済み（/pre と /post）
-            const preUrl = `${baseUrl}/p/${ev.id}/pre`;
-            const postUrl = `${baseUrl}/p/${ev.id}/post`;
+          {loading ? (
+            <div className="text-center py-8 text-orange-400 font-bold animate-pulse">読み込み中...</div>
+          ) : events.length === 0 ? (
+            <div className="bg-white p-8 rounded-3xl border border-orange-100 text-center text-gray-400 text-sm shadow-sm">
+              イベントがまだ登録されていません。
+            </div>
+          ) : (
+            events.map((ev) => {
+              const preUrl = `${baseUrl}/p/${ev.id}/pre`;
+              const postUrl = `${baseUrl}/p/${ev.id}/post`;
 
-            // このイベントに紐づく回答データを抽出
-            const eventSurveys = surveys.filter((s) => s.event_id === ev.id);
-            const preCount = eventSurveys.filter((s) => s.timing_type === 'pre').length;
-            const postCount = eventSurveys.filter((s) => s.timing_type === 'post').length;
+              // このイベントに紐づく回答データを抽出
+              const eventSurveys = surveys.filter((s) => s.event_id === ev.id);
+              const preCount = eventSurveys.filter((s) => s.timing_type === 'pre').length;
+              const postCount = eventSurveys.filter((s) => s.timing_type === 'post').length;
 
-            const isExpanded = expandedEventId === ev.id;
-            const targetDate = ev.event_date || ev.date;
+              const isExpanded = expandedEventId === ev.id;
+              const targetDate = ev.event_date || ev.date;
 
-            return (
-              <div key={ev.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-4">
-                  <div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="text-xl font-bold text-gray-800">{ev.title}</h3>
-                      {targetDate && (
-                        <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-md">
-                          📅 {targetDate}
-                        </span>
+              return (
+                <div key={ev.id} className="bg-white p-6 rounded-3xl border border-orange-50 shadow-md hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-5">
+                    <div>
+                      <div className="flex items-center gap-3 flex-wrap mb-1">
+                        <h3 className="text-xl font-black text-gray-800 tracking-tight">{ev.title}</h3>
+                        {targetDate && (
+                          <span className="bg-orange-50 text-orange-600 border border-orange-100 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                            📅 {targetDate}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 font-mono">ID: {ev.id}</p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="text-xs font-bold text-rose-400 hover:text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      削除
+                    </button>
+                  </div>
+
+                  {/* 事前 / 事後 URL */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100">
+                      <div className="text-xs font-bold text-orange-700 mb-2 flex items-center gap-1">
+                        <span>事前アンケート URL</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={preUrl}
+                          className="w-full bg-white px-3 py-2 border border-orange-200 rounded-xl text-xs text-gray-600 truncate focus:outline-none"
+                        />
+                        <a
+                          href={preUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          開く ↗
+                        </a>
+                        <button
+                          onClick={() => handleCopy(preUrl, `${ev.id}-pre`)}
+                          className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          {copiedId === `${ev.id}-pre` ? '完了' : 'コピー'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
+                      <div className="text-xs font-bold text-emerald-700 mb-2 flex items-center gap-1">
+                        <span>事後アンケート URL</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={postUrl}
+                          className="w-full bg-white px-3 py-2 border border-emerald-200 rounded-xl text-xs text-gray-600 truncate focus:outline-none"
+                        />
+                        <a
+                          href={postUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          開く ↗
+                        </a>
+                        <button
+                          onClick={() => handleCopy(postUrl, `${ev.id}-post`)}
+                          className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          {copiedId === `${ev.id}-post` ? '完了' : 'コピー'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 📊 アコーディオン展開ボタン */}
+                  <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                      <span>回答件数:</span>
+                      <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">事前 {preCount}件</span>
+                      <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">事後 {postCount}件</span>
+                    </div>
+
+                    <button
+                      onClick={() => toggleExpand(ev.id)}
+                      className="text-xs font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 py-1.5 px-3 rounded-xl hover:bg-orange-50 transition-colors"
+                    >
+                      📊 回答結果を確認 ({eventSurveys.length}件) {isExpanded ? '▲' : '▼'}
+                    </button>
+                  </div>
+
+                  {/* 📋 回答結果一覧（開閉部） */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/80 p-5 rounded-2xl">
+                      <h4 className="text-xs font-bold text-gray-600 mb-3">アンケート回答ログ</h4>
+
+                      {eventSurveys.length === 0 ? (
+                        <p className="text-xs text-gray-400 py-4 text-center bg-white rounded-xl border border-gray-100">まだ回答がありません。</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
+                            <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
+                              <tr>
+                                <th className="p-3">回答者 (ニックネーム / ID)</th>
+                                <th className="p-3">タイミング</th>
+                                <th className="p-3">総合平均点</th>
+                                <th className="p-3">合計点</th>
+                                <th className="p-3">回答日時</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-gray-700">
+                              {eventSurveys.map((s) => {
+                                const isPost = s.timing_type === 'post';
+                                return (
+                                  <tr key={s.id} className="hover:bg-orange-50/50 transition-colors">
+                                    <td className="p-3 font-bold text-gray-800">
+                                      {s.display_name}
+                                    </td>
+                                    <td className="p-3">
+                                      <span
+                                        className={`px-2 py-1 rounded-md text-[10px] font-bold ${
+                                          isPost
+                                            ? 'bg-emerald-100 text-emerald-700'
+                                            : 'bg-orange-100 text-orange-700'
+                                        }`}
+                                      >
+                                        {isPost ? '事後 (Post)' : '事前 (Pre)'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 font-black text-gray-900 text-sm">
+                                      {Number(s.total_mean).toFixed(2)} <span className="text-gray-400 text-xs font-normal">/ 5.0</span>
+                                    </td>
+                                    <td className="p-3 text-gray-500 font-medium">{s.total_sum} 点</td>
+                                    <td className="p-3 text-gray-400">{formatDate(s.created_at)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">ID: {ev.id}</p>
-                  </div>
-
-                  <button
-                    onClick={() => handleDeleteEvent(ev.id)}
-                    className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors"
-                  >
-                    削除
-                  </button>
+                  )}
                 </div>
-
-                {/* 事前 / 事後 URL */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                    <div className="text-xs font-bold text-blue-700 mb-1">事前アンケート URL</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={preUrl}
-                        className="w-full bg-white px-2 py-1 border rounded text-xs text-gray-600 truncate"
-                      />
-                      <a
-                        href={preUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                      >
-                        開く ↗
-                      </a>
-                      <button
-                        onClick={() => handleCopy(preUrl, `${ev.id}-pre`)}
-                        className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                      >
-                        {copiedId === `${ev.id}-pre` ? 'コピー完了' : 'コピー'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100">
-                    <div className="text-xs font-bold text-emerald-700 mb-1">事後アンケート URL</div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={postUrl}
-                        className="w-full bg-white px-2 py-1 border rounded text-xs text-gray-600 truncate"
-                      />
-                      <a
-                        href={postUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                      >
-                        開く ↗
-                      </a>
-                      <button
-                        onClick={() => handleCopy(postUrl, `${ev.id}-post`)}
-                        className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
-                      >
-                        {copiedId === `${ev.id}-post` ? 'コピー完了' : 'コピー'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 📊 アコーディオン展開ボタン */}
-                <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                    <span>回答件数:</span>
-                    <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">事前 {preCount}件</span>
-                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">事後 {postCount}件</span>
-                  </div>
-
-                  <button
-                    onClick={() => toggleExpand(ev.id)}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 py-1 px-3 rounded-lg hover:bg-indigo-50 transition-colors"
-                  >
-                    📊 回答結果を確認 ({eventSurveys.length}件) {isExpanded ? '▲' : '▼'}
-                  </button>
-                </div>
-
-                {/* 📋 回答結果一覧（開閉部） */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/80 p-4 rounded-xl">
-                    <h4 className="text-xs font-bold text-gray-700 mb-3">アンケート回答ログ</h4>
-
-                    {eventSurveys.length === 0 ? (
-                      <p className="text-xs text-gray-400 py-2 text-center">まだ回答がありません。</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100">
-                          <thead className="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
-                            <tr>
-                              <th className="p-2.5">回答者 (ニックネーム / ID)</th>
-                              <th className="p-2.5">タイミング</th>
-                              <th className="p-2.5">総合平均点</th>
-                              <th className="p-2.5">合計点</th>
-                              <th className="p-2.5">回答日時</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100 text-gray-700">
-                            {eventSurveys.map((s) => {
-                              const isPost = s.timing_type === 'post';
-                              return (
-                                <tr key={s.id} className="hover:bg-gray-50">
-                                  <td className="p-2.5 font-bold text-gray-800">
-                                    {s.display_name}
-                                  </td>
-                                  <td className="p-2.5">
-                                    <span
-                                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                        isPost
-                                          ? 'bg-emerald-100 text-emerald-800'
-                                          : 'bg-orange-100 text-orange-800'
-                                      }`}
-                                    >
-                                      {isPost ? '事後 (Post)' : '事前 (Pre)'}
-                                    </span>
-                                  </td>
-                                  <td className="p-2.5 font-black text-gray-900">
-                                    {Number(s.total_mean).toFixed(2)} / 5.0
-                                  </td>
-                                  <td className="p-2.5 text-gray-500">{s.total_sum} 点</td>
-                                  <td className="p-2.5 text-gray-400">{formatDate(s.created_at)}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
