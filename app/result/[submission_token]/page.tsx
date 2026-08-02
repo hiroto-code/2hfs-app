@@ -48,10 +48,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   
-  // 💡 プライベートイベント判定用のステート
   const [isPrivate, setIsPrivate] = useState(false);
 
-  // ▼ 新しく「ニックネーム入力用」のステートを追加 ▼
   const [inputName, setInputName] = useState("");
   const [email, setEmail] = useState("");
   
@@ -77,7 +75,10 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        // 💡 イベント情報を取得し、プライベートかどうかを判定
+        // ローカルストレージからの名前取得（直前に作成画面で入力した名前）
+        const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
+
+        // イベント情報の取得・判定
         let privateFlag = false;
         if (currentData.event_id) {
           const { data: eventData } = await supabase
@@ -95,24 +96,50 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        const { data: profile } = await supabase
+        // 💡 修正ポイント1: 最新のプロフィールを1件取得
+        const { data: profiles } = await supabase
           .from('user_profiles')
           .select('*')
           .or(`participant_id.eq.${currentData.participant_id},email.eq.${currentData.participant_id}`)
-          .maybeSingle();
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        const profile = profiles?.[0];
+        let resolvedName = '';
 
         if (profile) {
-          setIsRegistered(true);
-          setEmail(profile.email || '');
           if (profile.display_name) {
-            setDisplayName(profile.display_name);
-          } else if (!currentData.participant_id.includes('@')) {
-            setDisplayName(currentData.participant_id);
-          } else {
-            setDisplayName(currentData.participant_id.split('@')[0]);
+            resolvedName = profile.display_name;
           }
-        } else {
-          setDisplayName(currentData.participant_id);
+          if (profile.email) {
+            setEmail(profile.email);
+          }
+        }
+
+        // 💡 修正ポイント2: 優先順位にしたがって名前を確定＆フォーム非表示判定
+        if (!resolvedName && savedLocalName) {
+          resolvedName = savedLocalName;
+        }
+
+        if (!resolvedName) {
+          if (currentData.participant_id && currentData.participant_id !== 'guest') {
+            resolvedName = currentData.participant_id.includes('@')
+              ? currentData.participant_id.split('@')[0]
+              : currentData.participant_id;
+          }
+        }
+
+        // guestの完全排除
+        if (!resolvedName || resolvedName === 'guest') {
+          resolvedName = 'あなた';
+        }
+
+        setDisplayName(resolvedName);
+        setInputName(resolvedName !== 'あなた' ? resolvedName : '');
+
+        // 既に名前・メアドが登録済み（guest以外）なら保存完了状態にする
+        if (profile?.email || (currentData.participant_id && currentData.participant_id !== 'guest' && currentData.participant_id.includes('@'))) {
+          setIsRegistered(true);
         }
 
         if (!privateFlag && currentData.timing_type === 'post') {
@@ -127,7 +154,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           if (preData) setPreSurveyData(preData);
         }
 
-        // 💡 プライベートイベントの時は全体平均を計算・表示しない
         if (!privateFlag) {
           const { data: allEventPostSurveys } = await supabase
             .from('surveys')
@@ -175,14 +201,18 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
     try {
       const cleanEmail = email.trim().toLowerCase();
-      // ▼ ここを修正：入力された名前があれば優先、なければメアドの@前を使う ▼
       const nicknameToSave = inputName.trim() || cleanEmail.split('@')[0];
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_display_name', nicknameToSave);
+      }
 
       const { error: profileError } = await supabase.from('user_profiles').upsert(
         {
           participant_id: cleanEmail,
           email: cleanEmail,
           display_name: nicknameToSave,
+          updated_at: new Date().toISOString(),
         },
         { onConflict: 'email' }
       );
@@ -274,7 +304,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     { subject: '快生\n(Living Well)', score: surveyData.domain_kaisei, preScore: preSurveyData?.domain_kaisei, groupAvg: groupAvgData?.kaisei },
   ];
 
-  // 💡 プライベートイベント用のカラー設定を動的に割り当て
   const headerBgClass = isPrivate ? 'bg-purple-100 text-purple-700' : (isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
   const borderClass = isPrivate ? 'border-purple-200' : (isPost ? 'border-green-200' : 'border-blue-200');
   const textClass = isPrivate ? 'text-purple-600' : (isPost ? 'text-green-600' : 'text-blue-600');
@@ -289,7 +318,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${borderClass}`}>
         <div className="absolute top-4 left-4">
           <span className={`text-xs font-bold px-3 py-1 rounded-full ${headerBgClass}`}>
-            ID: {displayName || surveyData.participant_id}
+            ID: {displayName}
           </span>
         </div>
 
@@ -307,7 +336,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
       {/* チャート＆スコア表示カード */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-800 border-b-2 border-gray-100 pb-4">
-          {displayName || surveyData.participant_id} さんの健幸度の結果
+          {displayName} さんの健幸度の結果
         </h2>
 
         {/* レーダーチャート */}
@@ -410,7 +439,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
       {/* メール登録 ＆ マイページ案内カード */}
       <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 md:p-8 rounded-2xl shadow-md border border-indigo-100 relative overflow-hidden">
-        {/* 装飾用の背景円 */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
         <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
 
@@ -426,7 +454,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
               メールアドレスを登録して自分専用のマイダッシュボードを作成すると、<span className="text-indigo-600 font-bold">グラフで日々の変化を振り返る</span>ことができます。（登録は無料です）
             </p>
 
-            {/* ▼ ニックネーム入力欄を追加して縦並びにしました ▼ */}
             <form onSubmit={handleRegisterEmail} className="flex flex-col gap-3">
               <input
                 type="text"
