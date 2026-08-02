@@ -75,10 +75,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        // ローカルストレージからの名前取得
         const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
 
-        // イベント情報の取得・判定
         let privateFlag = false;
         if (currentData.event_id) {
           const { data: eventData } = await supabase
@@ -96,7 +94,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        // 最新のプロフィールを1件取得
         const { data: profiles } = await supabase
           .from('user_profiles')
           .select('*')
@@ -203,15 +200,16 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         localStorage.setItem('user_display_name', nicknameToSave);
       }
 
-      // 💡 修正箇所: updated_at を除去して安全にupsert
-      const { error: profileError } = await supabase.from('user_profiles').upsert(
-        {
-          participant_id: cleanEmail,
-          email: cleanEmail,
-          display_name: nicknameToSave,
-        },
-        { onConflict: 'email' }
-      );
+      // 💡 カラムに存在しない updated_at を絶対に含まない形に固定
+      const payload: any = {
+        participant_id: cleanEmail,
+        email: cleanEmail,
+        display_name: nicknameToSave,
+      };
+
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert(payload, { onConflict: 'email' });
 
       if (profileError) throw profileError;
 
