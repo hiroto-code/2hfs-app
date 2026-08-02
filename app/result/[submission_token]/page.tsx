@@ -200,7 +200,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         localStorage.setItem('user_display_name', nicknameToSave);
       }
 
-      // 💡 カラムに存在しない updated_at を絶対に含まない形に固定
       const payload: any = {
         participant_id: cleanEmail,
         email: cleanEmail,
@@ -268,9 +267,9 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl font-bold text-gray-600 text-center">
-          読み込み中...
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
+        <div className="text-orange-500 font-bold animate-pulse text-lg">
+          データを読み込み中... 🌿
         </div>
       </div>
     );
@@ -278,8 +277,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
   if (errorMsg || !surveyData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="bg-red-100 text-red-700 p-6 rounded-xl text-center shadow-sm max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4">
+        <div className="bg-white p-6 rounded-3xl border border-rose-200 text-rose-700 text-center shadow-md max-w-md w-full">
           <p className="font-bold mb-2">{errorMsg || "データが見つかりません。"}</p>
         </div>
       </div>
@@ -298,206 +297,208 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     { subject: '快生\n(Living Well)', score: surveyData.domain_kaisei, preScore: preSurveyData?.domain_kaisei, groupAvg: groupAvgData?.kaisei },
   ];
 
-  const headerBgClass = isPrivate ? 'bg-purple-100 text-purple-700' : (isPost ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700');
-  const borderClass = isPrivate ? 'border-purple-200' : (isPost ? 'border-green-200' : 'border-blue-200');
-  const textClass = isPrivate ? 'text-purple-600' : (isPost ? 'text-green-600' : 'text-blue-600');
-  const cardBgClass = isPrivate ? 'bg-purple-50 border-purple-100' : (isPost ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100');
-  const radarColor = isPrivate ? '#8b5cf6' : (isPost ? '#10b981' : '#3b82f6');
+  // テーマカラー設定（プライベート: 紫, 事後: 緑, 事前: オレンジ）
+  const headerBgClass = isPrivate ? 'bg-purple-100 text-purple-700' : (isPost ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800');
+  const borderClass = isPrivate ? 'border-purple-200' : (isPost ? 'border-emerald-200' : 'border-orange-200');
+  const textClass = isPrivate ? 'text-purple-700' : (isPost ? 'text-emerald-700' : 'text-orange-600');
+  const cardBgClass = isPrivate ? 'bg-purple-50/70 border-purple-100' : (isPost ? 'bg-emerald-50/70 border-emerald-100' : 'bg-orange-50/70 border-orange-100');
+  const radarColor = isPrivate ? '#a855f7' : (isPost ? '#10b981' : '#f97316');
   const radarName = isPrivate ? "自分 (Your Score)" : (isPost ? "自分: 事後 (Post)" : "自分: 事前 (Pre)");
 
   return (
-    <div className="max-w-3xl mx-auto p-4 md:p-8 font-sans bg-gray-50 min-h-screen">
-      
-      {/* メッセージヘッダー */}
-      <div className={`p-6 rounded-2xl shadow-sm border mb-8 text-center bg-white relative ${borderClass}`}>
-        <div className="absolute top-4 left-4">
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${headerBgClass}`}>
-            ID: {displayName}
-          </span>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
+      <div className="max-w-3xl mx-auto">
+        
+        {/* メッセージヘッダー */}
+        <div className={`p-6 md:p-8 rounded-3xl shadow-md border bg-white/90 backdrop-blur-md mb-6 text-center relative overflow-hidden ${borderClass}`}>
+          <div className="absolute top-4 left-4">
+            <span className={`text-xs font-bold px-3 py-1 rounded-full shadow-sm ${headerBgClass}`}>
+              ID: {displayName}
+            </span>
+          </div>
+
+          <h1 className={`text-2xl md:text-3xl font-black mb-2 mt-4 tracking-tight ${textClass}`}>
+            {isPrivate ? 'プライベート記録 完了 ✨' : (isPost ? '事後アンケート完了 🎉' : '事前アンケート完了 🌿')}
+            <span className="block text-xs md:text-sm font-medium mt-1 opacity-70 tracking-normal">
+              {isPrivate ? 'Private Record Completed' : (isPost ? 'Post-event Survey Completed' : 'Pre-event Survey Completed')}
+            </span>
+          </h1>
+          <p className="text-gray-600 font-medium text-xs md:text-sm mt-3">
+            ご回答ありがとうございました！あなたの健幸度の結果です。
+          </p>
         </div>
 
-        <h1 className={`text-2xl font-bold mb-2 mt-4 ${textClass}`}>
-          {isPrivate ? 'プライベート記録 完了' : (isPost ? '事後アンケート完了' : '事前アンケート完了')}
-          <span className="block text-base font-normal mt-1 opacity-80">
-            {isPrivate ? 'Private Record Completed' : (isPost ? 'Post-event Survey Completed' : 'Pre-event Survey Completed')}
-          </span>
-        </h1>
-        <p className="text-gray-600 font-medium mt-4">
-          ご回答ありがとうございました！あなたの健幸度の結果です。
-        </p>
-      </div>
+        {/* チャート＆スコア表示カード */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 mb-6">
+          <h2 className="text-lg md:text-xl font-bold text-center mb-6 text-gray-800 border-b border-orange-100 pb-4 flex items-center justify-center gap-2">
+            <span>📊</span> {displayName} さんの健幸度結果
+          </h2>
 
-      {/* チャート＆スコア表示カード */}
-      <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-200 mb-8">
-        <h2 className="text-xl font-bold text-center mb-6 text-gray-800 border-b-2 border-gray-100 pb-4">
-          {displayName} さんの健幸度の結果
-        </h2>
+          {/* レーダーチャート */}
+          <div className="w-full h-[360px] md:h-[420px] bg-orange-50/30 rounded-2xl p-2 border border-orange-100/60 mb-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="46%" data={chartData}>
+                <PolarGrid stroke="#e2e8f0" />
+                <PolarAngleAxis dataKey="subject" tick={<CustomAngleAxisTick />} />
+                <PolarRadiusAxis 
+                  angle={90} 
+                  domain={[0, 5]} 
+                  ticks={[1, 2, 3, 4, 5]} 
+                  stroke="none"
+                  tick={(props: any) => (
+                    <text x={props.x} y={props.y} fill="#64748b" fontSize={10} fontWeight="bold" textAnchor="middle" dominantBaseline="central">
+                      {props.payload.value}
+                    </text>
+                  )}
+                />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}/>
 
-        {/* レーダーチャート */}
-        <div className="w-full h-[360px] md:h-[440px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart cx="50%" cy="50%" outerRadius="46%" data={chartData}>
-              <PolarGrid />
-              <PolarAngleAxis dataKey="subject" tick={<CustomAngleAxisTick />} />
-              <PolarRadiusAxis 
-                angle={90} 
-                domain={[0, 5]} 
-                ticks={[1, 2, 3, 4, 5]} 
-                stroke="none"
-                tick={(props: any) => (
-                  <text x={props.x} y={props.y} fill="#475569" fontSize={10} fontWeight="bold" textAnchor="middle" dominantBaseline="central">
-                    {props.payload.value}
-                  </text>
+                {hasPreData && (
+                  <Radar name="自分: 事前 (Pre)" dataKey="preScore" stroke="#94a3b8" strokeWidth={2} fill="transparent" />
                 )}
-              />
-              <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}/>
-
-              {hasPreData && (
-                <Radar name="自分: 事前 (Pre)" dataKey="preScore" stroke="#9ca3af" strokeWidth={2} fill="transparent" />
-              )}
-              {groupAvgData && !isPrivate && (
-                <Radar name={`全体平均 (Group Avg, N=${groupAvgData.count})`} dataKey="groupAvg" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={2} fill="transparent" />
-              )}
-              <Radar name={radarName} dataKey="score" stroke={radarColor} strokeWidth={2.5} fill="transparent" />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* スコア詳細比較 */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`p-4 rounded-xl text-center border ${cardBgClass}`}>
-            <div className={`text-sm font-bold mb-3 ${textClass}`}>
-              総合平均点 <span className="text-xs font-normal opacity-70">Total Mean</span>
-            </div>
-            <div className="flex justify-center items-center gap-3">
-              {hasPreData && (
-                <>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 font-bold mb-1">事前 Pre</div>
-                    <div className="text-lg font-bold text-gray-500">{Number(preSurveyData.total_mean).toFixed(2)}</div>
-                  </div>
-                  <div className="text-gray-300 font-bold">▶</div>
-                </>
-              )}
-              <div className="text-center">
-                <div className={`text-xs font-bold mb-1 ${textClass}`}>自分 Your Score</div>
-                <div className={`text-2xl font-black ${textClass}`}>
-                  {Number(surveyData.total_mean).toFixed(2)}
-                </div>
-              </div>
-              {groupAvgData && !isPrivate && (
-                <>
-                  <div className="text-gray-300 font-bold">/</div>
-                  <div className="text-center">
-                    <div className="text-xs text-orange-500 font-bold mb-1">全体 Group</div>
-                    <div className="text-2xl font-black text-orange-500">{groupAvgData.total_mean.toFixed(2)}</div>
-                  </div>
-                </>
-              )}
-            </div>
+                {groupAvgData && !isPrivate && (
+                  <Radar name={`全体平均 (Group Avg, N=${groupAvgData.count})`} dataKey="groupAvg" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={2} fill="transparent" />
+                )}
+                <Radar name={radarName} dataKey="score" stroke={radarColor} strokeWidth={3} fill="transparent" />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
 
-          <div className={`p-4 rounded-xl text-center border ${cardBgClass}`}>
-            <div className={`text-sm font-bold mb-3 ${textClass}`}>
-              総合合計点 <span className="text-xs font-normal opacity-70">Total Sum</span>
-            </div>
-            <div className="flex justify-center items-center gap-3">
-              {hasPreData && (
-                <>
-                  <div className="text-center">
-                    <div className="text-xs text-gray-500 font-bold mb-1">事前 Pre</div>
-                    <div className="text-lg font-bold text-gray-500">{preSurveyData.total_sum}</div>
-                  </div>
-                  <div className="text-gray-300 font-bold">▶</div>
-                </>
-              )}
-              <div className="text-center">
-                <div className={`text-xs font-bold mb-1 ${textClass}`}>自分 Your Score</div>
-                <div className={`text-2xl font-black ${textClass}`}>
-                  {surveyData.total_sum}
-                </div>
+          {/* スコア詳細比較 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`p-5 rounded-2xl text-center border shadow-sm ${cardBgClass}`}>
+              <div className={`text-xs font-bold mb-2 ${textClass}`}>
+                総合平均点 <span className="font-normal opacity-70">Total Mean</span>
               </div>
-              {groupAvgData && !isPrivate && (
-                <>
-                  <div className="text-gray-300 font-bold">/</div>
-                  <div className="text-center">
-                    <div className="text-xs text-orange-500 font-bold mb-1">全体 Group</div>
-                    <div className="text-2xl font-black text-orange-500">{groupAvgData.total_sum.toFixed(1)}</div>
+              <div className="flex justify-center items-center gap-3">
+                {hasPreData && (
+                  <>
+                    <div className="text-center">
+                      <div className="text-[10px] text-gray-400 font-bold mb-0.5">事前 Pre</div>
+                      <div className="text-base font-bold text-gray-500">{Number(preSurveyData.total_mean).toFixed(2)}</div>
+                    </div>
+                    <div className="text-gray-300 text-xs font-bold">▶</div>
+                  </>
+                )}
+                <div className="text-center">
+                  <div className={`text-[10px] font-bold mb-0.5 ${textClass}`}>自分 Your Score</div>
+                  <div className={`text-3xl font-black ${textClass}`}>
+                    {Number(surveyData.total_mean).toFixed(2)}
                   </div>
-                </>
-              )}
+                </div>
+                {groupAvgData && !isPrivate && (
+                  <>
+                    <div className="text-gray-300 text-xs font-bold">/</div>
+                    <div className="text-center">
+                      <div className="text-[10px] text-amber-600 font-bold mb-0.5">全体 Group</div>
+                      <div className="text-2xl font-black text-amber-500">{groupAvgData.total_mean.toFixed(2)}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className={`p-5 rounded-2xl text-center border shadow-sm ${cardBgClass}`}>
+              <div className={`text-xs font-bold mb-2 ${textClass}`}>
+                総合合計点 <span className="font-normal opacity-70">Total Sum</span>
+              </div>
+              <div className="flex justify-center items-center gap-3">
+                {hasPreData && (
+                  <>
+                    <div className="text-center">
+                      <div className="text-[10px] text-gray-400 font-bold mb-0.5">事前 Pre</div>
+                      <div className="text-base font-bold text-gray-500">{preSurveyData.total_sum}</div>
+                    </div>
+                    <div className="text-gray-300 text-xs font-bold">▶</div>
+                  </>
+                )}
+                <div className="text-center">
+                  <div className={`text-[10px] font-bold mb-0.5 ${textClass}`}>自分 Your Score</div>
+                  <div className={`text-3xl font-black ${textClass}`}>
+                    {surveyData.total_sum}
+                  </div>
+                </div>
+                {groupAvgData && !isPrivate && (
+                  <>
+                    <div className="text-gray-300 text-xs font-bold">/</div>
+                    <div className="text-center">
+                      <div className="text-[10px] text-amber-600 font-bold mb-0.5">全体 Group</div>
+                      <div className="text-2xl font-black text-amber-500">{groupAvgData.total_sum.toFixed(1)}</div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* メール登録 ＆ マイページ案内カード */}
-      <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 md:p-8 rounded-2xl shadow-md border border-indigo-100 relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
-        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-100 rounded-full blur-2xl opacity-60 pointer-events-none"></div>
+        {/* メール登録 ＆ マイページ案内カード */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full blur-3xl opacity-50 -z-10 pointer-events-none"></div>
 
-        {!isRegistered ? (
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
-                無料登録で保存
-              </span>
-              <h3 className="text-xl font-bold text-gray-800">今回のスコアを保存しよう！</h3>
+          {!isRegistered ? (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-sm">
+                  無料登録で保存
+                </span>
+                <h3 className="text-lg font-bold text-gray-800">今回のスコアを保存しよう！</h3>
+              </div>
+              <p className="text-xs text-gray-600 mb-5 leading-relaxed font-medium">
+                メールアドレスを登録して自分専用のマイダッシュボードを作成すると、<span className="text-purple-600 font-bold">グラフで日々の変化を振り返る</span>ことができます。（登録は無料です）
+              </p>
+
+              <form onSubmit={handleRegisterEmail} className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="お名前 / ニックネーム (例: Hiroto)"
+                  value={inputName}
+                  onChange={(e) => setInputName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-800 text-sm bg-orange-50/20 shadow-inner transition-all"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="メールアドレスを入力 (例: user@supwell.jp)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-800 text-sm bg-orange-50/20 shadow-inner transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={registering}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-md text-sm transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 mt-1"
+                >
+                  {registering ? '保存中...' : 'お名前と結果を保存する ✨'}
+                </button>
+              </form>
+              {regError && <p className="text-xs text-rose-500 mt-3 font-bold bg-rose-50 p-2.5 rounded-xl border border-rose-100">{regError}</p>}
+              
+              <p className="text-[11px] text-gray-400 mt-4 text-center">
+                ※すでにアカウントをお持ちの方は、同じアドレスを入力するとデータが統合されます。
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed font-medium">
-              メールアドレスを登録して自分専用のマイダッシュボードを作成すると、<span className="text-indigo-600 font-bold">グラフで日々の変化を振り返る</span>ことができます。（登録は無料です）
-            </p>
-
-            <form onSubmit={handleRegisterEmail} className="flex flex-col gap-3">
-              <input
-                type="text"
-                required
-                placeholder="お名前 / ニックネーム (例: Hiroto)"
-                value={inputName}
-                onChange={(e) => setInputName(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
-              />
-              <input
-                type="email"
-                required
-                placeholder="メールアドレスを入力 (例: user@supwell.jp)"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800 text-sm bg-white shadow-inner"
-              />
-              <button
-                type="submit"
-                disabled={registering}
-                className="bg-gray-900 hover:bg-black text-white font-bold px-6 py-4 rounded-xl shadow-md text-sm md:text-base transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 mt-2"
+          ) : (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full mb-3 text-xl font-black shadow-sm">
+                ✓
+              </div>
+              <h3 className="text-lg font-black text-gray-800 mb-1">スコアが保存されました！</h3>
+              <p className="text-xs text-gray-500 mb-5 font-medium">
+                グラフが追加された、あなた専用のマイダッシュボードを確認してみましょう。
+              </p>
+              <Link
+                href={`/my/${encodeURIComponent(surveyData.participant_id)}`}
+                className="inline-block bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold px-8 py-3.5 rounded-2xl shadow-md text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                {registering ? '保存中...' : 'お名前と結果を保存する ✨'}
-              </button>
-            </form>
-            {regError && <p className="text-xs text-red-500 mt-3 font-bold bg-red-50 p-2 rounded-md">{regError}</p>}
-            
-            <p className="text-[11px] text-gray-400 mt-4 text-center">
-              ※すでにアカウントをお持ちの方は、同じアドレスを入力するとデータが統合されます。
-            </p>
-          </div>
-        ) : (
-          <div className="text-center py-4 relative z-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-green-400 to-emerald-500 text-white rounded-full mb-4 text-2xl font-black shadow-md">
-              ✓
+                📊 マイダッシュボードを開く
+              </Link>
             </div>
-            <h3 className="text-xl font-black text-gray-800 mb-2">スコアが保存されました！</h3>
-            <p className="text-sm text-gray-500 mb-6 font-medium">
-              グラフが追加された、あなた専用のマイダッシュボードを確認してみましょう。
-            </p>
-            <Link
-              href={`/my/${encodeURIComponent(surveyData.participant_id)}`}
-              className="inline-block bg-gray-900 hover:bg-black text-white font-bold px-8 py-3.5 rounded-xl shadow-md text-sm transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              📊 マイダッシュボードを開く
-            </Link>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
+      </div>
     </div>
   );
 }
