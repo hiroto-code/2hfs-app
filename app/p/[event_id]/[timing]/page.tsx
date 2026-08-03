@@ -68,6 +68,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       localStorage.setItem('supwell_user_email', formattedEmail);
       localStorage.setItem('supwell_user_name', formattedName);
 
+      // 💡 重要修正：event_id が 'private' の場合は DB (UUID型) 用に null に変換する
+      const dbEventId = event_id === 'private' ? null : event_id;
+
       // 各領域の平均点計算
       const getDomainMean = (indices: number[]) => {
         const sum = indices.reduce((acc, idx) => acc + (answers[idx] || 0), 0);
@@ -87,10 +90,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       const submission_token = crypto.randomUUID();
 
       const payload = {
-        event_id,
+        event_id: dbEventId, // 👈 修正: null に変換した変数を使用
         participant_id: formattedEmail,
         display_name: formattedName,
-        timing_type: timing, // ⭕️ 'private' のまま正しく保存します
+        timing_type: timing, 
         display_language: 'bilingual',
         answers,
         q1: answers[0],
@@ -123,14 +126,27 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       };
 
       // 事前・事後・プライベートの上書き用（過去データを削除）
-      await supabase
-        .from('surveys')
-        .delete()
-        .match({ 
-          event_id: event_id, 
-          participant_id: formattedEmail,
-          timing_type: timing 
-        });
+      if (dbEventId === null) {
+        // null の場合（プライベート）の削除条件
+        await supabase
+          .from('surveys')
+          .delete()
+          .match({ 
+            participant_id: formattedEmail,
+            timing_type: timing 
+          })
+          .is('event_id', null);
+      } else {
+        // 通常のイベントの削除条件
+        await supabase
+          .from('surveys')
+          .delete()
+          .match({ 
+            event_id: dbEventId, 
+            participant_id: formattedEmail,
+            timing_type: timing 
+          });
+      }
 
       // 新しい回答データを保存
       const { error } = await supabase
