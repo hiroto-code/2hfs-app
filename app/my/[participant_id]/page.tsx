@@ -20,7 +20,7 @@ const CustomDot = (props: any) => {
 
 export default function MyDashboardPage({ params }: { params: Promise<{ participant_id: string }> }) {
   const { participant_id: rawId } = use(params);
-  const participantId = decodeURIComponent(rawId);
+  const participantId = decodeURIComponent(rawId || '');
 
   const [displayName, setDisplayName] = useState<string>('');
   const [accountEmail, setAccountEmail] = useState<string>('');
@@ -93,7 +93,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             const targetDate = ev?.event_date || ev?.date || s.created_at;
             
             const rawTitle = ev?.title || ev?.event_name || '';
-            const isPrivate = rawTitle.includes('【プライベート】');
+            const isPrivate = rawTitle.includes('【プライベート】') || s.timing_type === 'private';
             const displayTitle = rawTitle.replace('【プライベート】', '');
 
             return {
@@ -124,11 +124,11 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setSurveys(enrichedSurveys);
         }
 
-     } catch (err) {
-    console.error('Fetch dashboard error:', err);
-  } finally {
-    setLoading(false);
-  }
+      } catch (err) {
+        console.error('Fetch dashboard error:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchUserData();
@@ -181,7 +181,6 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     prevGroupKey = currentGroupKey;
 
     const dateLabel = formatDateLabel(s.target_date);
-    // 💡 X軸用タグを「前」「後」に変更（例: 8/2 [前]）
     const timingLabel = s.timing_type === 'post' ? '後' : '前';
     
     chartData.push({
@@ -193,12 +192,26 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     });
   });
 
+  // 通常イベントとプライベートイベントを分けて保持
+  const regularSurveys = [...surveys].filter((s) => !s.isPrivate).reverse();
+  const privateSurveys = [...surveys].filter((s) => s.isPrivate).reverse();
+
+  // やり直しボタンの遷移先URLを判定する関数
+  const getRetakeUrl = (survey: any) => {
+    if (survey.isPrivate) {
+      // プライベートイベント用の回答/やり直しページ
+      return survey.event_id ? `/p/${survey.event_id}/private` : '/create-private-event';
+    }
+    // 通常イベント（事前・事後）
+    return `/p/${survey.event_id}/${survey.timing_type}`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
         
         {/* ヘッダーカード */}
-        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-md p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full blur-3xl opacity-60 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
           <div>
             <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full inline-block mb-2">
@@ -223,7 +236,7 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         </div>
 
         {/* グラフエリア */}
-        <div className="bg-white p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md mb-6">
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md">
           <h2 className="text-lg font-bold text-gray-800 border-b border-orange-100 pb-3 mb-6 flex items-center gap-2">
             <span>📈</span> 健幸度スコアの経時推移
           </h2>
@@ -333,20 +346,20 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           </div>
         </div>
 
-        {/* アクティビティ履歴 */}
+        {/* 1. 通常イベント履歴（事前・事後） */}
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md">
           <h2 className="text-lg font-bold text-gray-800 border-b border-orange-100 pb-3 mb-6 flex items-center gap-2">
-            <span>📜</span> アクティビティ・イベント履歴
+            <span>📜</span> イベント回答履歴（事前・事後）
           </h2>
 
-          {surveys.length > 0 ? (
+          {regularSurveys.length > 0 ? (
             <div className="space-y-3">
-              {[...surveys].reverse().map((survey) => {
+              {regularSurveys.map((survey) => {
                 const isPostType = survey.timing_type === 'post';
-                const badgeColor = survey.isPrivate ? 'bg-purple-500' : (isPostType ? 'bg-emerald-500' : 'bg-orange-500');
-                const textColor = survey.isPrivate ? 'text-purple-600' : (isPostType ? 'text-emerald-600' : 'text-orange-600');
-                const timingText = survey.isPrivate ? '[プライベート]' : (isPostType ? '[事後]' : '[事前]');
-                const buttonColor = survey.isPrivate ? 'bg-purple-600 hover:bg-purple-700' : (isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600');
+                const badgeColor = isPostType ? 'bg-emerald-500' : 'bg-orange-500';
+                const textColor = isPostType ? 'text-emerald-600' : 'text-orange-600';
+                const timingText = isPostType ? '[事後]' : '[事前]';
+                const buttonColor = isPostType ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600';
 
                 return (
                   <div key={survey.id || survey.submission_token} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-orange-50/30 hover:bg-orange-50/80 rounded-2xl transition-all border border-orange-100/60 gap-4">
@@ -368,11 +381,9 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                       <Link href={`/result/${survey.submission_token}`} className={`text-[11px] font-bold px-3 py-2 rounded-xl text-white transition-all flex items-center gap-1 shadow-sm ${buttonColor}`}>
                         📊 結果を見る
                       </Link>
-                      {survey.event_id && (
-                        <Link href={`/p/${survey.event_id}/${survey.timing_type}`} className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white border border-orange-200 text-gray-600 hover:bg-orange-50 transition-colors flex items-center gap-1 shadow-sm">
-                          ✏️ やり直す
-                        </Link>
-                      )}
+                      <Link href={getRetakeUrl(survey)} className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white border border-orange-200 text-gray-600 hover:bg-orange-50 transition-colors flex items-center gap-1 shadow-sm">
+                        ✏️ やり直す
+                      </Link>
                       <span className="text-[11px] text-gray-400 bg-white px-2.5 py-2 rounded-xl border border-gray-100 font-medium ml-auto sm:ml-0">
                         {formatDateFull(survey.target_date)}
                       </span>
@@ -382,9 +393,55 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
               })}
             </div>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-6">回答履歴がありません。</p>
+            <p className="text-sm text-gray-400 text-center py-6">イベント回答履歴がありません。</p>
           )}
         </div>
+
+        {/* 2. プライベート記録履歴（紫デザインで独立） */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-purple-100 shadow-md">
+          <h2 className="text-lg font-bold text-purple-900 border-b border-purple-100 pb-3 mb-6 flex items-center gap-2">
+            <span>💜</span> プライベート記録履歴
+          </h2>
+
+          {privateSurveys.length > 0 ? (
+            <div className="space-y-3">
+              {privateSurveys.map((survey) => {
+                return (
+                  <div key={survey.id || survey.submission_token} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-purple-50/30 hover:bg-purple-50/80 rounded-2xl transition-all border border-purple-100/60 gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full flex-shrink-0 bg-purple-500 shadow-sm" />
+                      <div>
+                        <div className="font-bold text-gray-800 text-sm">
+                          {formatDateLabel(survey.target_date)}{' '}
+                          <span className="text-purple-600">[プライベート]</span>{' '}
+                          {survey.displayTitle ? `${survey.displayTitle} ` : ''}記録
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          平均: <span className="font-bold text-purple-800">{Number(survey.total_mean).toFixed(2)}点</span> / 合計: {survey.total_sum}点
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/result/${survey.submission_token}`} className="text-[11px] font-bold px-3 py-2 rounded-xl text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center gap-1 shadow-sm">
+                        📊 記録を見る
+                      </Link>
+                      <Link href={getRetakeUrl(survey)} className="text-[11px] font-bold px-3 py-2 rounded-xl bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 transition-colors flex items-center gap-1 shadow-sm">
+                        ✏️ やり直す
+                      </Link>
+                      <span className="text-[11px] text-gray-400 bg-white px-2.5 py-2 rounded-xl border border-gray-100 font-medium ml-auto sm:ml-0">
+                        {formatDateFull(survey.target_date)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6">プライベート記録がありません。</p>
+          )}
+        </div>
+
       </div>
     </div>
   );
