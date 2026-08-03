@@ -25,17 +25,86 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   const [displayName, setDisplayName] = useState('');
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
+  const [fetchingExisting, setFetchingExisting] = useState(false);
+  const [hasExistingData, setHasExistingData] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const isPost = timing === 'post';
   const isPrivate = timing === 'private';
 
+  // 💡 過去の回答データを取得してフォームに自動セットする処理
+  const fetchExistingAnswers = async (targetEmail: string) => {
+    if (!targetEmail.trim()) return;
+
+    setFetchingExisting(true);
+    try {
+      const formattedEmail = targetEmail.trim().toLowerCase();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id || '');
+      const dbEventId = isUUID ? event_id : null;
+
+      let query = supabase
+        .from('surveys')
+        .select('*')
+        .eq('participant_id', formattedEmail)
+        .eq('timing_type', timing);
+
+      if (dbEventId === null) {
+        query = query.is('event_id', null);
+      } else {
+        query = query.eq('event_id', dbEventId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        // 過去の回答が存在した場合、フォームを自動復元
+        if (data.answers && Object.keys(data.answers).length > 0) {
+          setAnswers(data.answers);
+        } else {
+          // q1 ~ q18 カラムから回答を復元（バックアップ対応）
+          const restoredAnswers: { [key: number]: number } = {};
+          for (let i = 0; i < 18; i++) {
+            const val = data[`q${i + 1}`];
+            if (val !== undefined && val !== null) {
+              restoredAnswers[i] = Number(val);
+            }
+          }
+          if (Object.keys(restoredAnswers).length > 0) {
+            setAnswers(restoredAnswers);
+          }
+        }
+
+        if (data.display_name) {
+          setDisplayName(data.display_name);
+        }
+        setHasExistingData(true);
+      }
+    } catch (err) {
+      console.error('前回のデータ取得エラー:', err);
+    } finally {
+      setFetchingExisting(false);
+    }
+  };
+
   useEffect(() => {
     const savedEmail = localStorage.getItem('supwell_user_email');
     const savedName = localStorage.getItem('supwell_user_name');
-    if (savedEmail) setEmail(savedEmail);
     if (savedName) setDisplayName(savedName);
-  }, []);
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+      fetchExistingAnswers(savedEmail);
+    }
+  }, [event_id, timing]);
+
+  // メールアドレス入力欄のフォーカスが外れた際にも自動検索
+  const handleEmailBlur = () => {
+    if (email.trim()) {
+      fetchExistingAnswers(email.trim());
+    }
+  };
 
   const handleScoreChange = (qIndex: number, val: number) => {
     setAnswers(prev => ({ ...prev, [qIndex]: val }));
@@ -64,9 +133,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       localStorage.setItem('supwell_user_email', formattedEmail);
       localStorage.setItem('supwell_user_name', formattedName);
 
-      // 💡 超強力ガード：正しいUUIDの形式かどうかを正規表現でチェックする
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id || '');
-      // 💡 "private" など不正な形式の時は強制的に null にする
       const dbEventId = isUUID ? event_id : null;
 
       const getDomainMean = (indices: number[]) => {
@@ -103,6 +170,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         total_sum, total_mean, submission_token
       };
 
+      // 既存データの削除（上書き用のリセット）
       if (dbEventId === null) {
         await supabase
           .from('surveys')
@@ -180,17 +248,25 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           <h1 className={`text-xl md:text-2xl font-black ${headerTitleColor}`}>
             {isPrivate ? 'プライベート健幸度チェック 🌿' : isPost ? '事後アンケート ✨' : '事前アンケート 📋'}
           </h1>
+          {hasExistingData && (
+            <p className="text-xs text-emerald-600 font-bold mt-2 bg-emerald-50 border border-emerald-200 py-1 px-3 rounded-full inline-block">
+              前回の回答データを読み込みました。修正箇所を選んで上書き保存できます。
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div className="bg-white p-5 rounded-3xl shadow-md border border-orange-100 space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-1">メールアドレス <span className="text-rose-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-800 mb-1">
+                メールアドレス <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={handleEmailBlur}
                 className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
               />
             </div>
@@ -204,6 +280,12 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
               />
             </div>
           </div>
+
+          {fetchingExisting && (
+            <div className="text-center py-2 text-xs font-bold text-orange-500 animate-pulse">
+              前回の回答データを検索・読み込み中...
+            </div>
+          )}
 
           {domainQuestions?.map((group) => {
             const style = domainStyles[group.domainKey] || { bg: 'bg-white', border: 'border-orange-100', title: 'text-amber-900' };
@@ -256,7 +338,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             type="submit" disabled={loading}
             className={`w-full py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${submitBtnBg} ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
           >
-            {loading ? '送信中...' : isPrivate ? '記録を保存する 🌿' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
+            {loading ? '送信中...' : hasExistingData ? '修正内容を上書き保存する 🌿' : isPrivate ? '記録を保存する 🌿' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
           </button>
         </form>
       </div>
