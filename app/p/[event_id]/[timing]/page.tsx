@@ -199,6 +199,22 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         throw new Error(error.message);
       }
 
+      // ===== ⬇今回追加したメール送信処理 =====
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formattedEmail,
+            name: formattedName,
+            dashboardUrl: `${window.location.origin}/dashboard?email=${encodeURIComponent(formattedEmail)}`
+          }),
+        });
+      } catch (emailError) {
+        console.error('メール送信エラー:', emailError);
+      }
+      // ===== ⬆ここまで =====
+
       router.push(`/result/${submission_token}`);
 
     } catch (err: any) {
