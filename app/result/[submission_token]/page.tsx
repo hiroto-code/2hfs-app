@@ -79,13 +79,11 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         let privateFlag = false;
         
-        // 判定条件の強化：timing_typeがprivateやnoneの場合、またはイベントIDが無い場合はプライベートとみなす
         if (currentData.timing_type === 'private' || currentData.timing_type === 'none' || !currentData.event_id) {
           privateFlag = true;
           setIsPrivate(true);
         }
 
-        // 判定条件の強化：イベント名に「プライベート」が含まれていれば検知（カッコの有無を問わない）
         if (!privateFlag && currentData.event_id) {
           const { data: eventData } = await supabase
             .from('events')
@@ -261,6 +259,22 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         }
       }
 
+      // 💡 ここにメール送信APIの呼び出しを追加
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: cleanEmail,
+            displayName: nicknameToSave,
+            myPageUrl: `${window.location.origin}/my/${encodeURIComponent(cleanEmail)}`,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("メール送信エラー:", emailErr);
+        // メール送信が失敗してもDB保存自体は成功しているので処理は進める
+      }
+
       setSurveyData((prev: any) => ({ ...prev, participant_id: cleanEmail }));
       setDisplayName(nicknameToSave);
       setIsRegistered(true);
@@ -305,7 +319,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     { subject: '快生\n(Living Well)', score: surveyData.domain_kaisei, preScore: preSurveyData?.domain_kaisei, groupAvg: groupAvgData?.kaisei },
   ];
 
-  // テーマカラー設定（プライベート: 紫, 事後: 緑, 事前: オレンジ）
   const headerBgClass = isPrivate ? 'bg-purple-100 text-purple-700' : (isPost ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800');
   const borderClass = isPrivate ? 'border-purple-200' : (isPost ? 'border-emerald-200' : 'border-orange-200');
   const textClass = isPrivate ? 'text-purple-700' : (isPost ? 'text-emerald-700' : 'text-orange-600');
@@ -317,7 +330,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
       <div className="max-w-3xl mx-auto">
         
-        {/* メッセージヘッダー */}
         <div className={`p-6 md:p-8 rounded-3xl shadow-md border bg-white/90 backdrop-blur-md mb-6 text-center relative overflow-hidden ${borderClass}`}>
           <div className="absolute top-4 left-4">
             <span className={`text-xs font-bold px-3 py-1 rounded-full shadow-sm ${headerBgClass}`}>
@@ -336,13 +348,11 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           </p>
         </div>
 
-        {/* チャート＆スコア表示カード */}
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 mb-6">
           <h2 className="text-lg md:text-xl font-bold text-center mb-6 text-gray-800 border-b border-orange-100 pb-4 flex items-center justify-center gap-2">
             <span>📊</span> {displayName} さんの健幸度結果
           </h2>
 
-          {/* レーダーチャート */}
           <div className="w-full h-[360px] md:h-[420px] bg-orange-50/30 rounded-2xl p-2 border border-orange-100/60 mb-6">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="46%" data={chartData}>
@@ -372,7 +382,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
             </ResponsiveContainer>
           </div>
 
-          {/* スコア詳細比較 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={`p-5 rounded-2xl text-center border shadow-sm ${cardBgClass}`}>
               <div className={`text-xs font-bold mb-2 ${textClass}`}>
@@ -440,7 +449,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           </div>
         </div>
 
-        {/* メール登録 ＆ マイページ案内カード */}
         <div className="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full blur-3xl opacity-50 -z-10 pointer-events-none"></div>
 
