@@ -199,7 +199,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         throw new Error(error.message);
       }
 
-      // ===== ⬇今回追加したメール送信処理 =====
+      // ===== ⬇メール送信処理（マイページURLを /my/メールアドレス に修正） =====
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -207,7 +207,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           body: JSON.stringify({
             email: formattedEmail,
             name: formattedName,
-            dashboardUrl: `${window.location.origin}/dashboard?email=${encodeURIComponent(formattedEmail)}`
+            dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(formattedEmail)}`
           }),
         });
       } catch (emailError) {

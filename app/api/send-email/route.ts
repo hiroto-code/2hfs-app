@@ -7,15 +7,18 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // どんな名前でデータが届いても柔軟に受け取れるように設定
     const email = body.email || body.recipientEmail;
     const name = body.name || body.displayName || body.display_name || 'ゲスト';
-    const rawDashboardUrl = body.dashboardUrl || body.url || body.link;
+    let rawDashboardUrl = body.dashboardUrl || body.url || body.link;
 
-    // URLが取得できない場合の安全対策
+    // 万が一 /dashboard で届いてしまった場合も /my/ に自動補正
+    if (rawDashboardUrl && rawDashboardUrl.includes('/dashboard?email=')) {
+      rawDashboardUrl = rawDashboardUrl.replace('/dashboard?email=', '/my/');
+    }
+
     const dashboardUrl = rawDashboardUrl && !rawDashboardUrl.includes('undefined')
       ? rawDashboardUrl
-      : `https://${request.headers.get('host')}/mypage`;
+      : `https://${request.headers.get('host')}/my/${encodeURIComponent(email)}`;
 
     const data = await resend.emails.send({
       from: 'onboarding@resend.dev',
