@@ -78,7 +78,15 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
         const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
 
         let privateFlag = false;
-        if (currentData.event_id) {
+        
+        // 判定条件の強化：timing_typeがprivateやnoneの場合、またはイベントIDが無い場合はプライベートとみなす
+        if (currentData.timing_type === 'private' || currentData.timing_type === 'none' || !currentData.event_id) {
+          privateFlag = true;
+          setIsPrivate(true);
+        }
+
+        // 判定条件の強化：イベント名に「プライベート」が含まれていれば検知（カッコの有無を問わない）
+        if (!privateFlag && currentData.event_id) {
           const { data: eventData } = await supabase
             .from('events')
             .select('*')
@@ -87,7 +95,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
             
           if (eventData) {
             const rawTitle = eventData.title || eventData.event_name || '';
-            if (rawTitle.includes('【プライベート】')) {
+            if (rawTitle.includes('プライベート') || rawTitle.includes('Private')) {
               privateFlag = true;
               setIsPrivate(true);
             }
@@ -147,7 +155,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           if (preData) setPreSurveyData(preData);
         }
 
-        if (!privateFlag) {
+        if (!privateFlag && currentData.event_id) {
           const { data: allEventPostSurveys } = await supabase
             .from('surveys')
             .select('*')
