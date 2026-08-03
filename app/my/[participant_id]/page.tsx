@@ -124,11 +124,11 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           setSurveys(enrichedSurveys);
         }
 
-      } catch (err) {
-        console.error('Fetch dashboard error:', err);
-      } font-medium {
-        setLoading(false);
-      }
+     } catch (err) {
+    console.error('Fetch dashboard error:', err);
+  } finally {
+    setLoading(false);
+  }
     };
 
     fetchUserData();
