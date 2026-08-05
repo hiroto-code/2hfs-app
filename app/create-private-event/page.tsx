@@ -112,6 +112,12 @@ export default function PrivateLogPage() {
           <p className="text-gray-500 text-sm font-medium mt-3 leading-relaxed">
             たった1分の簡単な質問で、<br />いまのあなたのバランスをグラフで可視化します。
           </p>
+          <div className="mt-4 text-left bg-orange-50/60 border border-orange-100 rounded-2xl p-4">
+            <p className="text-xs text-gray-700 leading-relaxed font-medium">
+              💡 メールアドレスを登録すると、専用の<span className="font-bold text-orange-600">マイダッシュボード</span>で健幸度の変化を振り返ることができます。<br />
+              何度でもチェックしてOK — 続けることで、自分らしいリズムや変化が見えてきます。
+            </p>
+          </div>
         </div>
 
         {/* 入力フォーム */}

@@ -119,11 +119,14 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
           const enrichedSurveys = surveyLogs.map((s) => {
             const ev = eventsMap[s.event_id];
-            const targetDate = ev?.event_date || ev?.date || s.created_at;
-            
             const rawTitle = ev?.title || ev?.event_name || '';
             const isPrivate = rawTitle.includes('【プライベート】') || s.timing_type === 'private';
             const displayTitle = rawTitle.replace('【プライベート】', '');
+
+            // 💡 プライベート記録は同じ日に複数回答することがあるため、
+            // 日付のみのevent_dateではなく、実際の回答日時(created_at)を使う
+            // （グラフのラベルで時刻まで区別できるようにするため）
+            const targetDate = isPrivate ? s.created_at : (ev?.event_date || ev?.date || s.created_at);
 
             return {
               ...s,
@@ -134,23 +137,37 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             };
           });
 
-          // 💡 同日内の並び順ルール（事前: 1 ➔ 事後: 2 ➔ プライベート: 3）
+          // 💡 並び順ルール：
+          // ・プライベート記録は、回答した日時順に個別に並べる
+          // ・イベント（事前/事後）は、後から振り返って事後だけ日を空けて回答する
+          //   ケースもあるため、実際の回答日時がバラバラでも「同じイベント」として
+          //   常に隣り合わせ（事前→事後の順）で表示する
           const timingOrder: Record<string, number> = { pre: 1, post: 2, private: 3 };
 
-          enrichedSurveys.sort((a, b) => {
-            const dateA = new Date(a.target_date).setHours(0, 0, 0, 0);
-            const dateB = new Date(b.target_date).setHours(0, 0, 0, 0);
+          const eventGroups = new Map<string, typeof enrichedSurveys>();
+          const blocks: { sortKey: number; items: typeof enrichedSurveys }[] = [];
 
-            // 1. まずは日付で並び替え
-            if (dateA !== dateB) return dateA - dateB;
-
-            // 2. 同一日の場合は「事前 ➔ 事後 ➔ プライベート」で強制並び替え
-            const orderA = timingOrder[a.timing_type] || (a.isPrivate ? 3 : 99);
-            const orderB = timingOrder[b.timing_type] || (b.isPrivate ? 3 : 99);
-            return orderA - orderB;
+          enrichedSurveys.forEach((s) => {
+            if (s.isPrivate) {
+              blocks.push({ sortKey: new Date(s.target_date).getTime(), items: [s] });
+              return;
+            }
+            const key = s.event_id || `no-event-${s.id}`;
+            if (!eventGroups.has(key)) {
+              eventGroups.set(key, []);
+            }
+            eventGroups.get(key)!.push(s);
           });
 
-          setSurveys(enrichedSurveys);
+          eventGroups.forEach((items) => {
+            items.sort((a, b) => (timingOrder[a.timing_type] || 99) - (timingOrder[b.timing_type] || 99));
+            const sortKey = Math.min(...items.map((i) => new Date(i.target_date).getTime()));
+            blocks.push({ sortKey, items });
+          });
+
+          blocks.sort((a, b) => a.sortKey - b.sortKey);
+
+          setSurveys(blocks.flatMap((b) => b.items));
         }
 
       } catch (err) {
@@ -186,16 +203,33 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
   const isPostPending = preSurvey ? !surveys.some(s => s.event_id === preSurvey.event_id && s.timing_type === 'post') : false;
 
+  // 閲覧者のタイムゾーンに関わらず、常に日本時間(JST)で表示する
   const formatDateLabel = (dateStr?: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    return new Date(dateStr).toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      month: 'numeric',
+      day: 'numeric',
+    });
+  };
+
+  const formatTimeLabel = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const formatDateFull = (dateStr?: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+    return new Date(dateStr).toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
   };
 
   const chartData: any[] = [];
@@ -219,9 +253,16 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
 
     const dateLabel = formatDateLabel(s.target_date);
     const timingLabel = s.timing_type === 'post' ? '後' : '前';
-    
+
+    // プライベート記録は同じ日に複数件あり得るため、時刻も付けて見分けられるようにする
+    const privateLabel = `${dateLabel} ${formatTimeLabel(s.target_date)}`;
+
+    // イベント（事前/事後）は、実際の回答日ではなくイベント名で表記し、
+    // 同じイベントの事前・事後が常に隣り合わせで分かるようにする
+    const eventLabel = `${s.displayTitle?.trim() || dateLabel}（${timingLabel}）`;
+
     chartData.push({
-      label: s.isPrivate ? `${dateLabel}` : `${dateLabel} [${timingLabel}]`,
+      label: s.isPrivate ? privateLabel : eventLabel,
       score: Number(Number(s.total_mean).toFixed(2)),
       sum: s.total_sum,
       timing: s.timing_type,
@@ -295,8 +336,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="label" tickFormatter={(value) => value.startsWith('spacer') ? '' : value} tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-45} textAnchor="end" dx={-2} dy={10} padding={{ left: 30, right: 30 }} />
-                      <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <XAxis dataKey="label" tickFormatter={(value) => value.startsWith('spacer') ? '' : value} tick={{ fontSize: 11, fontWeight: 600, fill: '#334155' }} interval={0} angle={-45} textAnchor="end" dx={-2} dy={10} padding={{ left: 30, right: 30 }} />
+                      <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 12, fontWeight: 600, fill: '#334155' }} />
                       <Tooltip formatter={(value: any) => [`${value} 点`, '総合平均点']} contentStyle={{ borderRadius: '16px', border: '1px solid #fed7aa', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} filterNull={true} />
                       <Line type="monotone" dataKey="score" stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="4 4" dot={<CustomDot />} activeDot={{ r: 8 }} connectNulls={true} />
                     </LineChart>
