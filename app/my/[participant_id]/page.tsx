@@ -233,6 +233,11 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const regularSurveys = [...surveys].filter((s) => !s.isPrivate).reverse();
   const privateSurveys = [...surveys].filter((s) => s.isPrivate).reverse();
 
+  // 💡 プライベート記録は都度の単発記録なので、全件の平均を自動集計して表示する
+  const privateAverageMean = privateSurveys.length > 0
+    ? privateSurveys.reduce((sum, s) => sum + Number(s.total_mean || 0), 0) / privateSurveys.length
+    : null;
+
   // やり直しボタンの遷移先URLを判定する関数
   const getRetakeUrl = (survey: any) => {
     if (survey.isPrivate) {
@@ -439,6 +444,17 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
           <h2 className="text-lg font-bold text-purple-900 border-b border-purple-100 pb-3 mb-6 flex items-center gap-2">
             <span>💜</span> プライベート記録履歴
           </h2>
+
+          {privateAverageMean !== null && (
+            <div className="mb-5 p-4 bg-purple-50/60 border border-purple-100 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+              <span className="text-xs font-bold text-purple-700">
+                全{privateSurveys.length}件の平均（自動集計）
+              </span>
+              <span className="text-lg font-black text-purple-900">
+                {privateAverageMean.toFixed(2)} <span className="text-xs font-normal text-purple-400">/ 5.0</span>
+              </span>
+            </div>
+          )}
 
           {privateSurveys.length > 0 ? (
             <div className="space-y-3">

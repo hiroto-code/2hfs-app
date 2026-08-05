@@ -197,11 +197,13 @@ export default function AdminDashboardPage() {
             events.map((ev) => {
               const preUrl = `${baseUrl}/p/${ev.id}/pre`;
               const postUrl = `${baseUrl}/p/${ev.id}/post`;
+              const privateUrl = `${baseUrl}/p/${ev.id}/private`;
 
               // このイベントに紐づく回答データを抽出
               const eventSurveys = surveys.filter((s) => s.event_id === ev.id);
               const preCount = eventSurveys.filter((s) => s.timing_type === 'pre').length;
               const postCount = eventSurveys.filter((s) => s.timing_type === 'post').length;
+              const privateCount = eventSurveys.filter((s) => s.timing_type === 'private').length;
 
               const isExpanded = expandedEventId === ev.id;
               const targetDate = ev.event_date || ev.date;
@@ -229,8 +231,8 @@ export default function AdminDashboardPage() {
                     </button>
                   </div>
 
-                  {/* 事前 / 事後 URL */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                  {/* 事前 / 事後 / プライベート URL */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
                     <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100">
                       <div className="text-xs font-bold text-orange-700 mb-2 flex items-center gap-1">
                         <span>事前アンケート URL</span>
@@ -286,6 +288,34 @@ export default function AdminDashboardPage() {
                         </button>
                       </div>
                     </div>
+
+                    <div className="bg-purple-50/50 p-4 rounded-2xl border border-purple-100">
+                      <div className="text-xs font-bold text-purple-700 mb-2 flex items-center gap-1">
+                        <span>プライベートURL（同じ場の参加者で平均を出したい場合）</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={privateUrl}
+                          className="w-full bg-white px-3 py-2 border border-purple-200 rounded-xl text-xs text-gray-600 truncate focus:outline-none"
+                        />
+                        <a
+                          href={privateUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          開く ↗
+                        </a>
+                        <button
+                          onClick={() => handleCopy(privateUrl, `${ev.id}-private`)}
+                          className="bg-gray-800 hover:bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm transition-colors"
+                        >
+                          {copiedId === `${ev.id}-private` ? '完了' : 'コピー'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {/* 📊 アコーディオン展開ボタン */}
@@ -294,6 +324,9 @@ export default function AdminDashboardPage() {
                       <span>回答件数:</span>
                       <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full">事前 {preCount}件</span>
                       <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full">事後 {postCount}件</span>
+                      {privateCount > 0 && (
+                        <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">プライベート {privateCount}件</span>
+                      )}
                     </div>
 
                     <button
@@ -326,20 +359,21 @@ export default function AdminDashboardPage() {
                             <tbody className="divide-y divide-gray-100 text-gray-700">
                               {eventSurveys.map((s) => {
                                 const isPost = s.timing_type === 'post';
+                                const isPrivateRow = s.timing_type === 'private';
+                                const timingLabel = isPrivateRow ? 'プライベート' : isPost ? '事後 (Post)' : '事前 (Pre)';
+                                const timingBadgeClass = isPrivateRow
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : isPost
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-orange-100 text-orange-700';
                                 return (
                                   <tr key={s.id} className="hover:bg-orange-50/50 transition-colors">
                                     <td className="p-3 font-bold text-gray-800">
                                       {s.display_name}
                                     </td>
                                     <td className="p-3">
-                                      <span
-                                        className={`px-2 py-1 rounded-md text-[10px] font-bold ${
-                                          isPost
-                                            ? 'bg-emerald-100 text-emerald-700'
-                                            : 'bg-orange-100 text-orange-700'
-                                        }`}
-                                      >
-                                        {isPost ? '事後 (Post)' : '事前 (Pre)'}
+                                      <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${timingBadgeClass}`}>
+                                        {timingLabel}
                                       </span>
                                     </td>
                                     <td className="p-3 font-black text-gray-900 text-sm">

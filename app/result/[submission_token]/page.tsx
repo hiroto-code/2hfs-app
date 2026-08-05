@@ -78,25 +78,30 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
 
-        let privateFlag = false;
-        
-        if (currentData.timing_type === 'private' || currentData.timing_type === 'none' || !currentData.event_id) {
-          privateFlag = true;
-          setIsPrivate(true);
-        }
+        // isPrivate: 画面の見た目（紫テーマ、「プライベート記録」表記）を決めるフラグ
+        setIsPrivate(
+          currentData.timing_type === 'private' ||
+          currentData.timing_type === 'none' ||
+          !currentData.event_id
+        );
 
-        if (!privateFlag && currentData.event_id) {
+        // isStandalone: 「同じ場を共有する仲間がいない、単発の個人記録」かどうか。
+        // これがtrueの場合のみ、事前比較・集団平均の取得をスキップする。
+        // 実イベントに紐づくプライベート回答（/p/{event_id}/private 経由）は
+        // isStandalone=false となり、同じevent_idを共有する仲間との集団平均が出せる。
+        let isStandalone = !currentData.event_id;
+
+        if (currentData.event_id) {
           const { data: eventData } = await supabase
             .from('events')
             .select('*')
             .eq('id', currentData.event_id)
             .maybeSingle();
-            
+
           if (eventData) {
             const rawTitle = eventData.title || eventData.event_name || '';
             if (rawTitle.includes('プライベート') || rawTitle.includes('Private')) {
-              privateFlag = true;
-              setIsPrivate(true);
+              isStandalone = true;
             }
           }
         }
@@ -142,7 +147,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           setIsRegistered(true);
         }
 
-        if (!privateFlag && currentData.timing_type === 'post') {
+        if (!isStandalone && currentData.timing_type === 'post') {
           const { data: preData } = await supabase
             .from('surveys')
             .select('*')
@@ -154,7 +159,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           if (preData) setPreSurveyData(preData);
         }
 
-        if (!privateFlag && currentData.event_id) {
+        if (!isStandalone && currentData.event_id) {
           const { data: allEventPostSurveys } = await supabase
             .from('surveys')
             .select('*')
@@ -401,7 +406,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 {hasPreData && (
                   <Radar name="自分: 事前 (Pre)" dataKey="preScore" stroke="#94a3b8" strokeWidth={2} fill="transparent" />
                 )}
-                {groupAvgData && !isPrivate && (
+                {groupAvgData && (
                   <Radar name={`全体平均 (Group Avg, N=${groupAvgData.count})`} dataKey="groupAvg" stroke="#f59e0b" strokeDasharray="4 4" strokeWidth={2} fill="transparent" />
                 )}
                 <Radar name={radarName} dataKey="score" stroke={radarColor} strokeWidth={3} fill="transparent" />
@@ -430,7 +435,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                     {Number(surveyData.total_mean).toFixed(2)}
                   </div>
                 </div>
-                {groupAvgData && !isPrivate && (
+                {groupAvgData && (
                   <>
                     <div className="text-gray-300 text-xs font-bold">/</div>
                     <div className="text-center">
@@ -462,7 +467,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                     {surveyData.total_sum}
                   </div>
                 </div>
-                {groupAvgData && !isPrivate && (
+                {groupAvgData && (
                   <>
                     <div className="text-gray-300 text-xs font-bold">/</div>
                     <div className="text-center">

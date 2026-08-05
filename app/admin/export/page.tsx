@@ -13,6 +13,9 @@ export default function AdminExportPage() {
   const [selectedTiming, setSelectedTiming] = useState<string>('all');
   const [excludePrivate, setExcludePrivate] = useState<boolean>(true);
 
+  // 行ごとの選択状態（キーは id または submission_token）
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchSurveys();
   }, []);
@@ -63,10 +66,89 @@ export default function AdminExportPage() {
     });
   }, [surveys, selectedEvent, selectedTiming, excludePrivate]);
 
+  // フィルター条件が変わったら、選択状態を「フィルター結果を全選択」にリセット
+  useEffect(() => {
+    setSelectedIds(new Set(filteredSurveys.map((s) => s.id || s.submission_token)));
+  }, [filteredSurveys]);
+
+  const rowKey = (s: any) => s.id || s.submission_token;
+
+  const toggleRow = (key: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const isAllSelected = filteredSurveys.length > 0 && selectedIds.size === filteredSurveys.length;
+
+  const toggleAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredSurveys.map(rowKey)));
+    }
+  };
+
+  // 選択された行のみを出力対象にする
+  const selectedSurveys = useMemo(
+    () => filteredSurveys.filter((s) => selectedIds.has(rowKey(s))),
+    [filteredSurveys, selectedIds]
+  );
+
+  // 選択した記録を1つのイベントに束ね、集団平均を出せるようにする（遡及的グループ化）
+  const [grouping, setGrouping] = useState(false);
+
+  const handleGroupSelected = async () => {
+    if (selectedSurveys.length < 2) return;
+
+    const groupTitle = window.prompt(
+      'グループ名（イベント名）を入力してください。\n選択した記録を1つのイベントとしてまとめ、集団平均をマイダッシュボード・結果画面に反映します。',
+      ''
+    );
+    if (!groupTitle || !groupTitle.trim()) return;
+
+    if (!confirm(`選択した${selectedSurveys.length}件を「${groupTitle}」としてグループ化します。よろしいですか？`)) {
+      return;
+    }
+
+    setGrouping(true);
+    try {
+      const { data: newEvent, error: eventError } = await supabase
+        .from('events')
+        .insert([{ title: groupTitle.trim(), event_date: new Date().toISOString().split('T')[0] }])
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
+
+      const ids = selectedSurveys.map((s) => s.id).filter(Boolean);
+      const { error: updateError } = await supabase
+        .from('surveys')
+        .update({ event_id: newEvent.id })
+        .in('id', ids);
+
+      if (updateError) throw updateError;
+
+      alert(`グループ化が完了しました（イベントID: ${newEvent.id}）。`);
+      await fetchSurveys();
+    } catch (err: any) {
+      console.error('Group error:', err);
+      alert('グループ化に失敗しました: ' + (err.message || '通信エラー'));
+    } finally {
+      setGrouping(false);
+    }
+  };
+
   // CSVダウンロード処理
   const handleDownloadCSV = () => {
-    if (filteredSurveys.length === 0) {
-      alert('該当する出力データがありません。フィルター条件を変更してください。');
+    if (selectedSurveys.length === 0) {
+      alert('出力するデータを選択してください。');
       return;
     }
 
@@ -87,7 +169,7 @@ export default function AdminExportPage() {
       ...Array.from({ length: 18 }, (_, i) => `Q${i + 1}`)
     ];
 
-    const rows = filteredSurveys.map((s) => {
+    const rows = selectedSurveys.map((s) => {
       const createdAt = s.created_at ? new Date(s.created_at).toLocaleString('ja-JP') : '';
       const timingMap: Record<string, string> = { pre: '事前', post: '事後', private: 'プライベート' };
       const timingLabel = timingMap[s.timing_type] || s.timing_type || '';
@@ -149,10 +231,10 @@ export default function AdminExportPage() {
 
           <button
             onClick={handleDownloadCSV}
-            disabled={loading || filteredSurveys.length === 0}
+            disabled={loading || selectedSurveys.length === 0}
             className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-3 rounded-xl shadow transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <span>📥</span> CSVダウンロード（{filteredSurveys.length}件）
+            <span>📥</span> CSVダウンロード（{selectedSurveys.length}件選択中）
           </button>
         </div>
 
@@ -212,16 +294,28 @@ export default function AdminExportPage() {
 
         {/* データ一覧テーブル */}
         <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              抽出結果（{filteredSurveys.length} / 全 {surveys.length} 件）
+              抽出結果（{filteredSurveys.length} / 全 {surveys.length} 件、選択中 {selectedSurveys.length} 件）
             </h2>
-            <button
-              onClick={fetchSurveys}
-              className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
-            >
-              🔄 リロード
-            </button>
+            <div className="flex items-center gap-3">
+              {selectedSurveys.length >= 2 && (
+                <button
+                  onClick={handleGroupSelected}
+                  disabled={grouping}
+                  className="text-xs font-bold text-purple-300 hover:text-purple-100 bg-purple-950/60 hover:bg-purple-900/60 border border-purple-800/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                  title="選択した記録を1つのイベントにまとめ、集団平均を出せるようにします"
+                >
+                  {grouping ? '処理中...' : `👥 選択中の${selectedSurveys.length}件をグループ化`}
+                </button>
+              )}
+              <button
+                onClick={fetchSurveys}
+                className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
+              >
+                🔄 リロード
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -231,6 +325,14 @@ export default function AdminExportPage() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-700 text-slate-400 font-medium">
+                    <th className="p-3 w-8">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={toggleAll}
+                        className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 focus:ring-offset-0"
+                      />
+                    </th>
                     <th className="p-3">日時</th>
                     <th className="p-3">種別</th>
                     <th className="p-3">表示名 / ID</th>
@@ -245,9 +347,18 @@ export default function AdminExportPage() {
                     const isPrivate = s.timing_type === 'private';
                     const badgeBg = isPrivate ? 'bg-purple-950/60 text-purple-300 border-purple-800/50' : isPost ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/50' : 'bg-amber-950/60 text-amber-300 border-amber-800/50';
                     const timingLabel = isPrivate ? 'プライベート' : isPost ? '事後' : '事前';
+                    const key = rowKey(s);
 
                     return (
-                      <tr key={s.id || s.submission_token} className="hover:bg-slate-700/30 transition-colors">
+                      <tr key={key} className="hover:bg-slate-700/30 transition-colors">
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(key)}
+                            onChange={() => toggleRow(key)}
+                            className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 focus:ring-offset-0"
+                          />
+                        </td>
                         <td className="p-3 text-slate-400 whitespace-nowrap">
                           {s.created_at ? new Date(s.created_at).toLocaleDateString('ja-JP') : '-'}
                         </td>
