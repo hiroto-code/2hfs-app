@@ -120,6 +120,39 @@ export default function AdminExportPage() {
     [filteredSurveys, selectedIds]
   );
 
+  // 選択した記録を完全に削除する（元に戻せないため二重確認する）
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteSelected = async () => {
+    if (selectedSurveys.length === 0) return;
+
+    const firstConfirm = confirm(
+      `選択した${selectedSurveys.length}件のデータを完全に削除します。この操作は元に戻せません。よろしいですか？`
+    );
+    if (!firstConfirm) return;
+
+    const secondConfirm = confirm(
+      `最終確認です。本当に${selectedSurveys.length}件を完全に削除してよろしいですか？（削除後の復元はできません）`
+    );
+    if (!secondConfirm) return;
+
+    setDeleting(true);
+    try {
+      const ids = selectedSurveys.map((s) => s.id).filter(Boolean);
+      const { error } = await supabase.from('surveys').delete().in('id', ids);
+      if (error) throw error;
+
+      setSelectedIds(new Set());
+      alert(`${ids.length}件を削除しました。`);
+      await fetchSurveys();
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      alert('削除に失敗しました: ' + (err.message || '通信エラー'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // 選択した記録を1つのイベントに束ね、集団平均を出せるようにする（遡及的グループ化）
   const [grouping, setGrouping] = useState(false);
   const [groupResult, setGroupResult] = useState<{ title: string; eventId: string; count: number } | null>(null);
@@ -439,6 +472,16 @@ export default function AdminExportPage() {
                   title="誤ってグループに含めてしまった記録を、単発の記録に戻します"
                 >
                   {ungrouping ? '処理中...' : `🔓 選択中の${groupedSelectedCount}件をグループから外す`}
+                </button>
+              )}
+              {selectedSurveys.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  disabled={deleting}
+                  className="text-xs font-bold text-rose-300 hover:text-rose-100 bg-rose-950/60 hover:bg-rose-900/60 border border-rose-800/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                  title="選択した記録を完全に削除します（元に戻せません）"
+                >
+                  {deleting ? '削除中...' : `🗑️ 選択中の${selectedSurveys.length}件を削除`}
                 </button>
               )}
               <button
