@@ -207,6 +207,9 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('user_display_name', nicknameToSave);
+        // 💡 マイダッシュボードのログインガードが、このブラウザ＝本人だと
+        // 確認するために使う（登録直後にOTPログインを求めずに済むように）
+        localStorage.setItem('supwell_user_email', cleanEmail);
       }
 
       const payload: any = {

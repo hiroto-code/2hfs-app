@@ -35,20 +35,33 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session?.user?.email) {
-        router.replace('/mypage/login');
+      if (session?.user?.email) {
+        const sessionEmail = session.user.email.toLowerCase();
+
+        // URLの参加者IDが自分のメールアドレスと一致しない場合は、自分のダッシュボードへ誘導
+        if (participantId.toLowerCase() !== sessionEmail) {
+          router.replace(`/my/${encodeURIComponent(session.user.email)}`);
+          return;
+        }
+
+        setAuthorized(true);
         return;
       }
 
-      const sessionEmail = session.user.email.toLowerCase();
+      // 💡 ログインセッションがなくても、このブラウザで直前に本人がアンケート回答・
+      // 登録した実績（localStorageに保存済みのメールアドレス）があれば、
+      // わざわざOTPログインをやり直させずそのまま自分のダッシュボードを見せる。
+      // 他人のメールアドレスをURLで直接叩いてきた場合はここに一致しないため、
+      // 引き続きログインページへ誘導される。
+      const locallyVerifiedEmail =
+        typeof window !== 'undefined' ? localStorage.getItem('supwell_user_email') : null;
 
-      // URLの参加者IDが自分のメールアドレスと一致しない場合は、自分のダッシュボードへ誘導
-      if (participantId.toLowerCase() !== sessionEmail) {
-        router.replace(`/my/${encodeURIComponent(session.user.email)}`);
+      if (locallyVerifiedEmail && locallyVerifiedEmail.toLowerCase() === participantId.toLowerCase()) {
+        setAuthorized(true);
         return;
       }
 
-      setAuthorized(true);
+      router.replace('/mypage/login');
     };
 
     checkAuth();
