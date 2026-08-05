@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase'; // 👈 Vercelのエラーを防ぐため @/ に変更
 
 interface EventItem {
@@ -341,12 +342,20 @@ export default function AdminDashboardPage() {
                       )}
                     </div>
 
-                    <button
-                      onClick={() => toggleExpand(ev.id)}
-                      className="text-xs font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 py-1.5 px-3 rounded-xl hover:bg-orange-50 transition-colors"
-                    >
-                      📊 回答結果を確認 ({eventSurveys.length}件) {isExpanded ? '▲' : '▼'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/event/${ev.id}`}
+                        className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 flex items-center gap-1 py-1.5 px-3 rounded-xl transition-colors shadow-sm"
+                      >
+                        📊 集団結果を見る
+                      </Link>
+                      <button
+                        onClick={() => toggleExpand(ev.id)}
+                        className="text-xs font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 py-1.5 px-3 rounded-xl hover:bg-orange-50 transition-colors"
+                      >
+                        回答一覧 ({eventSurveys.length}件) {isExpanded ? '▲' : '▼'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* 📋 回答結果一覧（開閉部） */}

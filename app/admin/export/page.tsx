@@ -18,6 +18,7 @@ const formatDateTimeJST = (dateStr: string) =>
 
 export default function AdminExportPage() {
   const [surveys, setSurveys] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // フィルター用ステート
@@ -43,6 +44,12 @@ export default function AdminExportPage() {
 
       if (error) throw error;
       setSurveys(data || []);
+
+      const { data: eventsData } = await supabase
+        .from('events')
+        .select('id, title')
+        .order('created_at', { ascending: false });
+      setEvents(eventsData || []);
     } catch (err) {
       console.error('Data fetch error:', err);
       alert('データの取得に失敗しました。');
@@ -155,6 +162,78 @@ export default function AdminExportPage() {
       alert('グループ化に失敗しました: ' + (err.message || '通信エラー'));
     } finally {
       setGrouping(false);
+    }
+  };
+
+  // 誤って選択した記録をグループから外す（event_idをnullに戻す＝ただの単発記録に戻す）
+  const [ungrouping, setUngrouping] = useState(false);
+
+  const groupedSelectedCount = selectedSurveys.filter((s) => !!s.event_id).length;
+
+  const handleUngroupSelected = async () => {
+    const targets = selectedSurveys.filter((s) => !!s.event_id);
+    if (targets.length === 0) return;
+
+    if (!confirm(`選択した${targets.length}件を、紐づいているイベント（グループ）から外します。個別の単発記録に戻り、集団平均の対象からも外れます。よろしいですか？`)) {
+      return;
+    }
+
+    setUngrouping(true);
+    try {
+      const ids = targets.map((s) => s.id).filter(Boolean);
+      const { error } = await supabase
+        .from('surveys')
+        .update({ event_id: null })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      alert(`${ids.length}件をグループから外しました。`);
+      await fetchSurveys();
+    } catch (err: any) {
+      console.error('Ungroup error:', err);
+      alert('グループ解除に失敗しました: ' + (err.message || '通信エラー'));
+    } finally {
+      setUngrouping(false);
+    }
+  };
+
+  // プライベート記録などを、既存イベントの事前/事後回答として組み込む
+  const [mergeTargetEvent, setMergeTargetEvent] = useState<string>('');
+  const [mergeTargetTiming, setMergeTargetTiming] = useState<'pre' | 'post'>('pre');
+  const [merging, setMerging] = useState(false);
+
+  const handleMergeIntoEvent = async () => {
+    if (selectedSurveys.length === 0) return;
+    if (!mergeTargetEvent) {
+      alert('組み込み先のイベントを選択してください。');
+      return;
+    }
+
+    const targetEventTitle = events.find((e) => e.id === mergeTargetEvent)?.title || mergeTargetEvent;
+    const timingText = mergeTargetTiming === 'pre' ? '事前' : '事後';
+
+    if (!confirm(`選択した${selectedSurveys.length}件を、「${targetEventTitle}」の${timingText}回答として組み込みます。よろしいですか？`)) {
+      return;
+    }
+
+    setMerging(true);
+    try {
+      const ids = selectedSurveys.map((s) => s.id).filter(Boolean);
+      const { error } = await supabase
+        .from('surveys')
+        .update({ event_id: mergeTargetEvent, timing_type: mergeTargetTiming })
+        .in('id', ids);
+
+      if (error) throw error;
+
+      alert(`${ids.length}件を「${targetEventTitle}」の${timingText}回答として組み込みました。`);
+      await fetchSurveys();
+    } catch (err: any) {
+      console.error('Merge error:', err);
+      alert('組み込みに失敗しました: ' + (err.message || '通信エラー'));
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -352,6 +431,16 @@ export default function AdminExportPage() {
                   {grouping ? '処理中...' : `👥 選択中の${selectedSurveys.length}件をグループ化`}
                 </button>
               )}
+              {groupedSelectedCount > 0 && (
+                <button
+                  onClick={handleUngroupSelected}
+                  disabled={ungrouping}
+                  className="text-xs font-bold text-amber-300 hover:text-amber-100 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                  title="誤ってグループに含めてしまった記録を、単発の記録に戻します"
+                >
+                  {ungrouping ? '処理中...' : `🔓 選択中の${groupedSelectedCount}件をグループから外す`}
+                </button>
+              )}
               <button
                 onClick={fetchSurveys}
                 className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
@@ -360,6 +449,41 @@ export default function AdminExportPage() {
               </button>
             </div>
           </div>
+
+          {selectedSurveys.length > 0 && (
+            <div className="mb-5 p-4 bg-indigo-950/40 border border-indigo-800/40 rounded-xl flex flex-col md:flex-row md:items-center gap-3">
+              <span className="text-xs font-bold text-indigo-300 whitespace-nowrap">
+                📥 選択中の{selectedSurveys.length}件を既存イベントの事前/事後として組み込む
+              </span>
+              <select
+                value={mergeTargetEvent}
+                onChange={(e) => setMergeTargetEvent(e.target.value)}
+                className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500 flex-1 min-w-0"
+              >
+                <option value="">組み込み先のイベントを選択...</option>
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.title}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={mergeTargetTiming}
+                onChange={(e) => setMergeTargetTiming(e.target.value as 'pre' | 'post')}
+                className="p-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="pre">事前として</option>
+                <option value="post">事後として</option>
+              </select>
+              <button
+                onClick={handleMergeIntoEvent}
+                disabled={merging || !mergeTargetEvent}
+                className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 whitespace-nowrap"
+              >
+                {merging ? '処理中...' : '組み込む'}
+              </button>
+            </div>
+          )}
 
           {loading ? (
             <div className="text-center py-12 text-slate-500 text-xs">データを読み込み中...</div>
