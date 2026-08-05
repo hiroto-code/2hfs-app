@@ -269,6 +269,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
               前回の回答データを読み込みました。修正箇所を選んで上書き保存できます。
             </p>
           )}
+          <p className="text-sm text-gray-600 font-medium mt-3 leading-relaxed">
+            スマートフォンで文字が小さい場合は、ブラウザの拡大表示もご利用ください。<br />
+            <span className="text-gray-500">If the text appears small on your smartphone, you may also use your browser&apos;s zoom setting.</span>
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
@@ -307,16 +311,16 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             const style = domainStyles[group.domainKey] || { bg: 'bg-white', border: 'border-orange-100', title: 'text-amber-900' };
             return (
               <div key={group.domainKey} className={`p-4 md:p-6 rounded-3xl shadow-sm border transition-all ${style.bg} ${style.border}`}>
-                <h2 className={`text-base md:text-lg font-bold border-b border-black/5 pb-2.5 mb-4 flex items-center gap-2 ${style.title}`}>
+                <h2 className={`text-lg md:text-xl font-bold border-b border-black/5 pb-3 mb-5 flex items-center gap-2 ${style.title}`}>
                   <span>{group.domainJa}</span>
                 </h2>
-                <div className="space-y-5 md:space-y-6">
+                <div className="space-y-7 md:space-y-8">
                   {group.items.map((item) => {
                     const qNum = item.index + 1;
                     return (
-                      <div key={item.index} className="space-y-2">
-                        <p className="font-bold text-gray-800 text-sm leading-snug">Q{qNum}. {item.textJa}</p>
-                        <div className="grid grid-cols-5 gap-1.5 pt-1">
+                      <div key={item.index} className="space-y-3">
+                        <p className="font-bold text-gray-900 text-base md:text-lg leading-snug">Q{qNum}. {item.textJa}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 sm:gap-2 pt-1">
                           {scaleOptions.map((opt) => {
                             const isSelected = answers[item.index] === opt.val;
                             const selectedBtnClass = isPrivate
@@ -328,10 +332,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                               <button
                                 key={opt.val} type="button"
                                 onClick={() => handleScoreChange(item.index, opt.val)}
-                                className={`flex flex-col items-center justify-start p-2 rounded-2xl border transition-all text-center h-full active:scale-95 ${isSelected ? selectedBtnClass : 'bg-white/80 text-gray-700 border-gray-200/80 hover:bg-white'}`}
+                                className={`flex flex-row sm:flex-col items-center sm:justify-start gap-3 sm:gap-0 px-4 py-3.5 sm:p-2.5 rounded-2xl border transition-all text-left sm:text-center min-h-[48px] active:scale-95 ${isSelected ? selectedBtnClass : 'bg-white/80 text-gray-800 border-gray-200/80 hover:bg-white'}`}
                               >
-                                <span className="text-base md:text-lg font-black leading-none mb-1.5">{opt.val}</span>
-                                <span className={`text-[9px] md:text-[10px] font-bold leading-tight block w-full break-words ${isSelected ? 'text-white' : 'text-gray-700'}`}>{opt.ja}</span>
+                                <span className="text-lg md:text-xl font-black leading-none sm:mb-1.5 flex-shrink-0 w-7 text-center">{opt.val}</span>
+                                <span className={`text-sm font-bold leading-snug block w-full break-words ${isSelected ? 'text-white' : 'text-gray-800'}`}>{opt.ja}</span>
                               </button>
                             );
                           })}
