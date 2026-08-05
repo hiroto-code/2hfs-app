@@ -347,7 +347,7 @@ export default function AdminExportPage() {
               <p className="text-purple-200 text-sm font-bold">
                 👥 「{groupResult.title}」として{groupResult.count}件をグループ化しました
               </p>
-              <p className="text-purple-400 text-xs mt-1">
+              <p className="text-purple-300 text-xs mt-1">
                 管理者ダッシュボードのイベント一覧の一番上に「👥 プライベートグループ」バッジ付きで表示されます。
               </p>
             </div>
@@ -362,7 +362,7 @@ export default function AdminExportPage() {
               </a>
               <button
                 onClick={() => setGroupResult(null)}
-                className="text-purple-400 hover:text-purple-200 text-xs underline whitespace-nowrap"
+                className="text-purple-300 hover:text-purple-200 text-xs underline whitespace-nowrap"
               >
                 閉じる
               </button>
@@ -379,7 +379,7 @@ export default function AdminExportPage() {
             <h1 className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight">
               回答データ抽出・CSV出力
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-300 mt-1">
               条件を指定して蓄積データをCSV形式で一括出力します。
             </p>
           </div>
@@ -395,7 +395,7 @@ export default function AdminExportPage() {
 
         {/* フィルターパネル */}
         <div className="bg-slate-800/90 p-5 md:p-6 rounded-2xl border border-slate-700/60 shadow-md space-y-4">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 pb-2">
+          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-700 pb-2">
             フィルター条件設定
           </h2>
 
@@ -450,7 +450,7 @@ export default function AdminExportPage() {
         {/* データ一覧テーブル */}
         <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
               抽出結果（{filteredSurveys.length} / 全 {surveys.length} 件、選択中 {selectedSurveys.length} 件）
             </h2>
             <div className="flex items-center gap-3">
@@ -486,7 +486,7 @@ export default function AdminExportPage() {
               )}
               <button
                 onClick={fetchSurveys}
-                className="text-xs text-slate-400 hover:text-slate-200 underline transition-colors"
+                className="text-xs text-slate-300 hover:text-slate-200 underline transition-colors"
               >
                 🔄 リロード
               </button>
@@ -529,12 +529,12 @@ export default function AdminExportPage() {
           )}
 
           {loading ? (
-            <div className="text-center py-12 text-slate-500 text-xs">データを読み込み中...</div>
+            <div className="text-center py-12 text-slate-300 text-xs">データを読み込み中...</div>
           ) : filteredSurveys.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-700 text-slate-400 font-medium">
+                  <tr className="border-b border-slate-700 text-slate-300 font-medium">
                     <th className="p-3 w-8">
                       <input
                         type="checkbox"
@@ -569,7 +569,7 @@ export default function AdminExportPage() {
                             className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 focus:ring-offset-0"
                           />
                         </td>
-                        <td className="p-3 text-slate-400 whitespace-nowrap">
+                        <td className="p-3 text-slate-300 whitespace-nowrap">
                           {s.created_at ? formatDateTimeJST(s.created_at) : '-'}
                         </td>
                         <td className="p-3 font-medium whitespace-nowrap">
@@ -579,9 +579,9 @@ export default function AdminExportPage() {
                         </td>
                         <td className="p-3">
                           <div className="text-slate-200 font-medium">{s.display_name || 'ゲスト'}</div>
-                          <div className="text-[10px] text-slate-500">{s.participant_id}</div>
+                          <div className="text-[10px] text-slate-300">{s.participant_id}</div>
                         </td>
-                        <td className="p-3 text-slate-400">{s.event_id || '-'}</td>
+                        <td className="p-3 text-slate-300">{s.event_id || '-'}</td>
                         <td className="p-3 text-right font-bold text-slate-200">
                           {s.total_mean ? Number(s.total_mean).toFixed(2) : '-'} 点
                         </td>
@@ -589,7 +589,7 @@ export default function AdminExportPage() {
                           <Link
                             href={`/result/${s.submission_token}`}
                             target="_blank"
-                            className="text-indigo-400 hover:text-indigo-300 underline text-[11px]"
+                            className="text-indigo-300 hover:text-indigo-200 underline text-[11px]"
                           >
                             開く ↗
                           </Link>
@@ -601,7 +601,7 @@ export default function AdminExportPage() {
               </table>
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-500 text-xs">
+            <div className="text-center py-12 text-slate-300 text-xs">
               条件に一致するデータが存在しません。
             </div>
           )}
