@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       : `https://${request.headers.get('host')}/my/${encodeURIComponent(email)}`;
 
     const data = await resend.emails.send({
-      from: 'onboarding@resend.dev',
+      from: 'SUPwell健幸度チェック <info@sup.snowell.app>',
       to: email,
       subject: '【健幸度チェック】スコアの保存とマイダッシュボードのご案内 🌿',
       html: `
