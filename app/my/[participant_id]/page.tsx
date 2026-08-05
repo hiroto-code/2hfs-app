@@ -338,7 +338,13 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="label" tickFormatter={(value) => value.startsWith('spacer') ? '' : value} tick={{ fontSize: 11, fontWeight: 600, fill: '#334155' }} interval={0} angle={-45} textAnchor="end" dx={-2} dy={10} padding={{ left: 30, right: 30 }} />
                       <YAxis domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 12, fontWeight: 600, fill: '#334155' }} />
-                      <Tooltip formatter={(value: any) => [`${value} 点`, '総合平均点']} contentStyle={{ borderRadius: '16px', border: '1px solid #fed7aa', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} filterNull={true} />
+                      <Tooltip
+                        formatter={(value: any) => [`${value} 点`, '総合平均点']}
+                        contentStyle={{ borderRadius: '16px', border: '1px solid #fed7aa', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                        itemStyle={{ color: '#334155', fontWeight: 700, fontSize: 13 }}
+                        labelStyle={{ color: '#1e293b', fontWeight: 700, fontSize: 13, marginBottom: 4 }}
+                        filterNull={true}
+                      />
                       <Line type="monotone" dataKey="score" stroke="#cbd5e1" strokeWidth={2.5} strokeDasharray="4 4" dot={<CustomDot />} activeDot={{ r: 8 }} connectNulls={true} />
                     </LineChart>
                   </ResponsiveContainer>

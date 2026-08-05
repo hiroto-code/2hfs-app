@@ -23,6 +23,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [mood, setMood] = useState<number>(3);
   const [answers, setAnswers] = useState<{ [key: number]: number }>({});
   const [loading, setLoading] = useState(false);
   const [fetchingExisting, setFetchingExisting] = useState(false);
@@ -78,6 +79,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
         if (data.display_name) {
           setDisplayName(data.display_name);
+        }
+        if (data.mood_score !== undefined && data.mood_score !== null) {
+          setMood(Number(data.mood_score));
         }
         setHasExistingData(true);
       }
@@ -167,7 +171,8 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         q17: answers[16], q18: answers[17],
         domain_kaishoku, domain_kaimin, domain_kaido,
         domain_kaisho, domain_kairaku, domain_kaisei,
-        total_sum, total_mean, submission_token
+        total_sum, total_mean, submission_token,
+        mood_score: mood,
       };
 
       // 既存データの削除（上書き用のリセット）
@@ -200,18 +205,22 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       }
 
       // ===== ⬇メール送信処理（マイページURLを /my/メールアドレス に修正） =====
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formattedEmail,
-            name: formattedName,
-            dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(formattedEmail)}`
-          }),
-        });
-      } catch (emailError) {
-        console.error('メール送信エラー:', emailError);
+      // 💡 新規回答の時だけ送る。既存データの「修正して上書き」では再送しない
+      // （同じ人が再訪問して上書きするたびに案内メールが届くのを防ぐため）
+      if (!hasExistingData) {
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formattedEmail,
+              name: formattedName,
+              dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(formattedEmail)}`
+            }),
+          });
+        } catch (emailError) {
+          console.error('メール送信エラー:', emailError);
+        }
       }
       // ===== ⬆ここまで =====
 
@@ -298,6 +307,31 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-800 mb-2 text-center">今の気分は？</label>
+              <div className="flex justify-between items-center gap-2">
+                {[
+                  { val: 1, emoji: '😫' },
+                  { val: 2, emoji: '😕' },
+                  { val: 3, emoji: '😐' },
+                  { val: 4, emoji: '🙂' },
+                  { val: 5, emoji: '✨' },
+                ].map((item) => (
+                  <button
+                    key={item.val}
+                    type="button"
+                    onClick={() => setMood(item.val)}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                      mood === item.val
+                        ? 'bg-orange-100 border-2 border-orange-400 shadow-md transform scale-110'
+                        : 'bg-white border-2 border-orange-50 hover:border-orange-200 hover:bg-orange-50 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 shadow-sm'
+                    }`}
+                  >
+                    {item.emoji}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
