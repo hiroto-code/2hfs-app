@@ -311,9 +311,19 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             const style = domainStyles[group.domainKey] || { bg: 'bg-white', border: 'border-orange-100', title: 'text-amber-900' };
             return (
               <div key={group.domainKey} className={`p-4 md:p-6 rounded-3xl shadow-sm border transition-all ${style.bg} ${style.border}`}>
-                <h2 className={`text-lg md:text-xl font-bold border-b border-black/5 pb-3 mb-5 flex items-center gap-2 ${style.title}`}>
+                <h2 className={`text-lg md:text-xl font-bold border-b border-black/5 pb-3 mb-3 flex items-center gap-2 ${style.title}`}>
                   <span>{group.domainJa}</span>
                 </h2>
+                {(group.descriptionJa || group.descriptionEn) && (
+                  <div className="mb-5">
+                    {group.descriptionJa && (
+                      <p className="text-base text-gray-700 leading-relaxed font-medium">{group.descriptionJa}</p>
+                    )}
+                    {group.descriptionEn && (
+                      <p className="text-sm text-gray-600 leading-relaxed mt-1">{group.descriptionEn}</p>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-7 md:space-y-8">
                   {group.items.map((item) => {
                     const qNum = item.index + 1;
