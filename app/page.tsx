@@ -150,8 +150,19 @@ export default function AdminDashboardPage() {
         
         <header className="mb-8 bg-white p-6 rounded-3xl shadow-sm border border-orange-100 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 rounded-full blur-3xl opacity-60 -z-10 transform translate-x-1/2 -translate-y-1/2"></div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tight">管理者ダッシュボード 🌿</h1>
-          <p className="text-sm text-gray-500 mt-2 font-medium">アンケートイベントの作成および回答状況・URLの管理ができます。</p>
+          <div className="flex justify-between items-start gap-4">
+            <div>
+              <h1 className="text-2xl font-black text-gray-800 tracking-tight">管理者ダッシュボード 🌿</h1>
+              <p className="text-sm text-gray-500 mt-2 font-medium">アンケートイベントの作成および回答状況・URLの管理ができます。</p>
+            </div>
+            <button
+              onClick={fetchData}
+              className="flex-shrink-0 text-xs font-bold text-orange-600 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
+              title="Supabase側で直接データを変更した場合など、最新の状態を再取得します"
+            >
+              🔄 再読み込み
+            </button>
+          </div>
         </header>
 
         {/* 新規イベント作成フォーム */}
