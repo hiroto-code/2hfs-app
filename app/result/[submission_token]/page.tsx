@@ -122,18 +122,18 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        // 💡 表示名は必ずこの記録自身のデータ（プロフィール or participant_id）から解決する。
-        // 閲覧しているブラウザのlocalStorageは、他人の記録を開いた時に
-        // 誤って閲覧者自身の名前を表示してしまうため使用しない。
+        // 💡 表示名は「本人が明示的に入力・設定した名前」だけを使う。
+        // メールアドレスの一部を名前として自動表示すると、意図しない個人情報の
+        // 露出になるため使用しない（このページは認証なしでリンクを知っていれば
+        // 誰でも開けるため）。閲覧者のlocalStorageも同様の理由で使用しない。
         if (!resolvedName) {
-          if (currentData.participant_id && currentData.participant_id !== 'guest') {
-            resolvedName = currentData.participant_id.includes('@')
-              ? currentData.participant_id.split('@')[0]
-              : currentData.participant_id;
+          const submittedName = currentData.display_name;
+          if (submittedName && submittedName !== 'guest' && submittedName !== 'ゲスト') {
+            resolvedName = submittedName;
           }
         }
 
-        if (!resolvedName || resolvedName === 'guest') {
+        if (!resolvedName) {
           resolvedName = 'あなた';
         }
 
