@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
 import Link from 'next/link';
+import { generateFeedback, type DomainKey } from '@/lib/feedback';
 
 const CustomAngleAxisTick = (props: any) => {
   const { x, y, payload, textAnchor } = props;
@@ -326,6 +327,32 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
   const radarColor = isPrivate ? '#a855f7' : (isPost ? '#10b981' : '#f97316');
   const radarName = isPrivate ? "自分 (Your Score)" : (isPost ? "自分: 事後 (Post)" : "自分: 事前 (Pre)");
 
+  const domainScores: Record<DomainKey, number> = {
+    kaishoku: Number(surveyData.domain_kaishoku),
+    kaimin: Number(surveyData.domain_kaimin),
+    kaido: Number(surveyData.domain_kaido),
+    kaisho: Number(surveyData.domain_kaisho),
+    kairaku: Number(surveyData.domain_kairaku),
+    kaisei: Number(surveyData.domain_kaisei),
+  };
+
+  const preDomainScores: Record<DomainKey, number> | undefined = hasPreData
+    ? {
+        kaishoku: Number(preSurveyData.domain_kaishoku),
+        kaimin: Number(preSurveyData.domain_kaimin),
+        kaido: Number(preSurveyData.domain_kaido),
+        kaisho: Number(preSurveyData.domain_kaisho),
+        kairaku: Number(preSurveyData.domain_kairaku),
+        kaisei: Number(preSurveyData.domain_kaisei),
+      }
+    : undefined;
+
+  const feedback = generateFeedback({
+    domainScores,
+    preDomainScores,
+    totalMean: Number(surveyData.total_mean),
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
       <div className="max-w-3xl mx-auto">
@@ -446,6 +473,32 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 💬 フィードバックカード（診断ではなく、振り返りのための気づき） */}
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-orange-100 mb-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-28 h-28 bg-amber-100 rounded-full blur-3xl opacity-50 -z-10 pointer-events-none"></div>
+          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <span>🌱</span> あなたへのメッセージ
+          </h2>
+          <p className="text-xs text-gray-500 leading-relaxed mb-5 bg-orange-50/60 border border-orange-100 rounded-2xl p-4">
+            {feedback.headline}
+          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700 leading-relaxed font-medium">
+              {feedback.strengthText}
+            </p>
+            {feedback.reflectionText && (
+              <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                {feedback.reflectionText}
+              </p>
+            )}
+            {feedback.changeText && (
+              <p className="text-sm text-gray-700 leading-relaxed font-medium">
+                {feedback.changeText}
+              </p>
+            )}
           </div>
         </div>
 
