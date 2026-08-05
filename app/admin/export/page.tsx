@@ -153,12 +153,46 @@ export default function AdminExportPage() {
     }
   };
 
+  // 選択した記録の中に「同じ人・同じタイミング種別」が重複していないかチェックする。
+  // surveys側に (event_id, participant_id, timing_type) の一意制約があるため、
+  // 同じ人が同じタイミングで複数回答した記録を同じイベントにまとめようとすると
+  // DBエラーになる。事前に検出して、どれが重複しているか分かりやすく伝える。
+  const findDuplicateSelections = (rows: any[], overrideTiming?: string) => {
+    const seen = new Map<string, any[]>();
+    rows.forEach((r) => {
+      const timing = overrideTiming || r.timing_type;
+      const key = `${r.participant_id}__${timing}`;
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key)!.push(r);
+    });
+    return Array.from(seen.values()).filter((list) => list.length > 1);
+  };
+
+  const describeDuplicates = (dupeGroups: any[][]) =>
+    dupeGroups
+      .map((group) => {
+        const label = group[0].display_name || group[0].participant_id || 'ゲスト';
+        const dates = group.map((r) => formatDateTimeJST(r.created_at)).join(' / ');
+        return `・${label}（${group[0].participant_id}）: ${dates}`;
+      })
+      .join('\n');
+
   // 選択した記録を1つのイベントに束ね、集団平均を出せるようにする（遡及的グループ化）
   const [grouping, setGrouping] = useState(false);
   const [groupResult, setGroupResult] = useState<{ title: string; eventId: string; count: number } | null>(null);
 
   const handleGroupSelected = async () => {
     if (selectedSurveys.length < 2) return;
+
+    const dupes = findDuplicateSelections(selectedSurveys);
+    if (dupes.length > 0) {
+      alert(
+        `同じ人が同じ回答タイミング（事前/事後/プライベート）で複数回答している記録が選択に含まれているため、グループ化できません。\n\n` +
+        describeDuplicates(dupes) +
+        `\n\nどちらか一方だけを選び直してください（同じ人の記録は、1つのイベント内で「タイミング種別」ごとに1件までです）。`
+      );
+      return;
+    }
 
     const groupTitle = window.prompt(
       'グループ名（イベント名）を入力してください。\n選択した記録を1つのイベントとしてまとめ、集団平均をマイダッシュボード・結果画面に反映します。',
@@ -245,6 +279,35 @@ export default function AdminExportPage() {
 
     const targetEventTitle = events.find((e) => e.id === mergeTargetEvent)?.title || mergeTargetEvent;
     const timingText = mergeTargetTiming === 'pre' ? '事前' : '事後';
+
+    // 選択した記録の中に、同じ人が複数いないか（組み込み後は全員同じtiming_typeになるため）
+    const dupesInSelection = findDuplicateSelections(selectedSurveys, mergeTargetTiming);
+    if (dupesInSelection.length > 0) {
+      alert(
+        `選択した記録の中に、同じ人の記録が複数含まれているため組み込めません。\n\n` +
+        describeDuplicates(dupesInSelection) +
+        `\n\nどちらか一方だけを選び直してください。`
+      );
+      return;
+    }
+
+    // 組み込み先イベントに、既に同じ人の同タイミング回答がないか（未選択の既存レコードとの重複）
+    const conflictsWithExisting = selectedSurveys.filter((s) =>
+      surveys.some(
+        (other) =>
+          other.event_id === mergeTargetEvent &&
+          other.timing_type === mergeTargetTiming &&
+          other.participant_id === s.participant_id &&
+          !selectedIds.has(rowKey(other))
+      )
+    );
+    if (conflictsWithExisting.length > 0) {
+      alert(
+        `組み込み先の「${targetEventTitle}」には、既に同じ人の${timingText}回答が存在するため組み込めません。\n\n` +
+        conflictsWithExisting.map((s) => `・${s.display_name || 'ゲスト'}（${s.participant_id}）`).join('\n')
+      );
+      return;
+    }
 
     if (!confirm(`選択した${selectedSurveys.length}件を、「${targetEventTitle}」の${timingText}回答として組み込みます。よろしいですか？`)) {
       return;
