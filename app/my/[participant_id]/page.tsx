@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 💡 グラフの点を描画するカスタムコンポーネント
@@ -21,13 +22,41 @@ const CustomDot = (props: any) => {
 export default function MyDashboardPage({ params }: { params: Promise<{ participant_id: string }> }) {
   const { participant_id: rawId } = use(params);
   const participantId = decodeURIComponent(rawId || '');
+  const router = useRouter();
 
   const [displayName, setDisplayName] = useState<string>('');
   const [accountEmail, setAccountEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [surveys, setSurveys] = useState<any[]>([]);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  // 🔒 ログイン確認：本人（同じメールアドレス）以外はマイダッシュボードを見られないようにする
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user?.email) {
+        router.replace('/mypage/login');
+        return;
+      }
+
+      const sessionEmail = session.user.email.toLowerCase();
+
+      // URLの参加者IDが自分のメールアドレスと一致しない場合は、自分のダッシュボードへ誘導
+      if (participantId.toLowerCase() !== sessionEmail) {
+        router.replace(`/my/${encodeURIComponent(session.user.email)}`);
+        return;
+      }
+
+      setAuthorized(true);
+    };
+
+    checkAuth();
+  }, [participantId, router]);
 
   useEffect(() => {
+    if (!authorized) return;
+
     const fetchUserData = async () => {
       try {
         setLoading(true);
@@ -132,7 +161,15 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     };
 
     fetchUserData();
-  }, [participantId]);
+  }, [participantId, authorized]);
+
+  if (!authorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50">
+        <div className="text-orange-500 font-bold animate-pulse">ログイン状態を確認中... 🌿</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
