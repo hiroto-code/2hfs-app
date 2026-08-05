@@ -76,8 +76,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
         setSurveyData(currentData);
 
-        const savedLocalName = typeof window !== 'undefined' ? localStorage.getItem('user_display_name') : null;
-
         // isPrivate: 画面の見た目（紫テーマ、「プライベート記録」表記）を決めるフラグ
         setIsPrivate(
           currentData.timing_type === 'private' ||
@@ -124,10 +122,9 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           }
         }
 
-        if (!resolvedName && savedLocalName) {
-          resolvedName = savedLocalName;
-        }
-
+        // 💡 表示名は必ずこの記録自身のデータ（プロフィール or participant_id）から解決する。
+        // 閲覧しているブラウザのlocalStorageは、他人の記録を開いた時に
+        // 誤って閲覧者自身の名前を表示してしまうため使用しない。
         if (!resolvedName) {
           if (currentData.participant_id && currentData.participant_id !== 'guest') {
             resolvedName = currentData.participant_id.includes('@')
