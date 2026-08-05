@@ -4,6 +4,18 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
+// 閲覧者のタイムゾーンに関わらず、常に日本時間(JST)で「年月日 時:分:秒」まで表示する
+const formatDateTimeJST = (dateStr: string) =>
+  new Date(dateStr).toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
 export default function AdminExportPage() {
   const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +115,7 @@ export default function AdminExportPage() {
 
   // 選択した記録を1つのイベントに束ね、集団平均を出せるようにする（遡及的グループ化）
   const [grouping, setGrouping] = useState(false);
+  const [groupResult, setGroupResult] = useState<{ title: string; eventId: string; count: number } | null>(null);
 
   const handleGroupSelected = async () => {
     if (selectedSurveys.length < 2) return;
@@ -135,7 +148,7 @@ export default function AdminExportPage() {
 
       if (updateError) throw updateError;
 
-      alert(`グループ化が完了しました（イベントID: ${newEvent.id}）。`);
+      setGroupResult({ title: groupTitle.trim(), eventId: newEvent.id, count: ids.length });
       await fetchSurveys();
     } catch (err: any) {
       console.error('Group error:', err);
@@ -170,7 +183,7 @@ export default function AdminExportPage() {
     ];
 
     const rows = selectedSurveys.map((s) => {
-      const createdAt = s.created_at ? new Date(s.created_at).toLocaleString('ja-JP') : '';
+      const createdAt = s.created_at ? formatDateTimeJST(s.created_at) : '';
       const timingMap: Record<string, string> = { pre: '事前', post: '事後', private: 'プライベート' };
       const timingLabel = timingMap[s.timing_type] || s.timing_type || '';
 
@@ -214,7 +227,37 @@ export default function AdminExportPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-6">
-        
+
+        {/* グループ化完了バナー */}
+        {groupResult && (
+          <div className="bg-purple-950/60 border border-purple-800/50 p-5 rounded-2xl shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <p className="text-purple-200 text-sm font-bold">
+                👥 「{groupResult.title}」として{groupResult.count}件をグループ化しました
+              </p>
+              <p className="text-purple-400 text-xs mt-1">
+                管理者ダッシュボードのイベント一覧の一番上に「👥 プライベートグループ」バッジ付きで表示されます。
+              </p>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <a
+                href="/"
+                target="_blank"
+                rel="noreferrer"
+                className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition-colors whitespace-nowrap"
+              >
+                管理者ダッシュボードを開く ↗
+              </a>
+              <button
+                onClick={() => setGroupResult(null)}
+                className="text-purple-400 hover:text-purple-200 text-xs underline whitespace-nowrap"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ヘッダー */}
         <div className="bg-slate-800/90 p-6 md:p-8 rounded-2xl border border-slate-700/60 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -360,7 +403,7 @@ export default function AdminExportPage() {
                           />
                         </td>
                         <td className="p-3 text-slate-400 whitespace-nowrap">
-                          {s.created_at ? new Date(s.created_at).toLocaleDateString('ja-JP') : '-'}
+                          {s.created_at ? formatDateTimeJST(s.created_at) : '-'}
                         </td>
                         <td className="p-3 font-medium whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded text-[10px] border ${badgeBg}`}>

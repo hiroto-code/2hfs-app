@@ -132,8 +132,15 @@ export default function AdminDashboardPage() {
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    // 閲覧者のタイムゾーンに関わらず、常に日本時間(JST)で表示する
+    return new Date(dateStr).toLocaleString('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   return (
@@ -217,6 +224,11 @@ export default function AdminDashboardPage() {
                         {targetDate && (
                           <span className="bg-orange-50 text-orange-600 border border-orange-100 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
                             📅 {targetDate}
+                          </span>
+                        )}
+                        {preCount === 0 && postCount === 0 && privateCount > 0 && (
+                          <span className="bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                            👥 プライベートグループ
                           </span>
                         )}
                       </div>
