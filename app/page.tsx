@@ -126,6 +126,30 @@ export default function AdminDashboardPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // 参加者向け案内文のテンプレート（事前アンケートURLが埋め込み済み）
+  const buildPreAnnouncement = (eventTitle: string, preUrl: string) =>
+    `【健幸度チェックのお願い🌿】\n\n` +
+    `「${eventTitle}」にご参加いただく皆さまへ、\n` +
+    `簡単な健幸度チェック（2HFS）にご協力をお願いします。\n\n` +
+    `▼事前アンケート（所要時間 約1分）\n${preUrl}\n\n` +
+    `・メールアドレスの入力が必要です（結果をお送りするため）\n` +
+    `・回答後、結果とマイダッシュボードへのご案内メールが届きます\n` +
+    `・そのメールは、当日以降もご自身の記録を振り返るのに使いますので、\n` +
+    `　よろしければ残しておいてください\n\n` +
+    `お手すきの際にご回答ください🙏`;
+
+  // 参加者向け案内文のテンプレート（事後アンケートURLが埋め込み済み）
+  const buildPostAnnouncement = (eventTitle: string, postUrl: string) =>
+    `【健幸度チェック（事後）のお願い🌿】\n\n` +
+    `「${eventTitle}」にご参加いただきありがとうございました！\n` +
+    `イベント前後での変化を見るため、事後アンケートへのご協力をお願いします。\n\n` +
+    `▼事後アンケート（所要時間 約1分）\n${postUrl}\n\n` +
+    `・事前アンケートと同じメールアドレスでご回答ください\n` +
+    `・回答後、事前→事後の変化が分かる結果画面が表示されます\n` +
+    `・結果画面から「マイダッシュボードを開く」を押すと、\n` +
+    `　ご自身の記録がグラフで振り返れます\n\n` +
+    `ご協力ありがとうございました✨`;
+
   // アコーディオン開閉
   const toggleExpand = (eventId: string) => {
     setExpandedEventId(expandedEventId === eventId ? null : eventId);
@@ -340,6 +364,22 @@ export default function AdminDashboardPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  {/* 参加者向け案内文コピー */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <button
+                      onClick={() => handleCopy(buildPreAnnouncement(ev.title, preUrl), `${ev.id}-announce-pre`)}
+                      className="text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-2 rounded-xl transition-colors"
+                    >
+                      {copiedId === `${ev.id}-announce-pre` ? '✓ コピーしました' : '📋 事前案内文をコピー'}
+                    </button>
+                    <button
+                      onClick={() => handleCopy(buildPostAnnouncement(ev.title, postUrl), `${ev.id}-announce-post`)}
+                      className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-xl transition-colors"
+                    >
+                      {copiedId === `${ev.id}-announce-post` ? '✓ コピーしました' : '📋 事後案内文をコピー'}
+                    </button>
                   </div>
 
                   {/* 📊 アコーディオン展開ボタン */}
