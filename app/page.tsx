@@ -150,6 +150,15 @@ export default function AdminDashboardPage() {
     `　ご自身の記録がグラフで振り返れます\n\n` +
     `ご協力ありがとうございました✨`;
 
+  // イベントに紐づかない、いつでも使えるプライベートセルフチェックの招待文
+  const buildPrivateInvite = () =>
+    `【☘️Well-being尺度（健幸度）セルフチェック🌿】\n\n` +
+    `いつでも気軽に、ご自身の健幸度（Well-being）をチェックしてみませんか？\n\n` +
+    `▼セルフチェック（所要時間 約1分）\nhttps://2hfs-app.vercel.app/create-private-event\n\n` +
+    `・メールアドレスを登録すると、マイダッシュボードで記録の変化を振り返れます\n` +
+    `・何度でも記録OK。続けることで、自分らしいリズムや変化が見えてきます\n\n` +
+    `気になったタイミングで、気軽にお試しください🙏`;
+
   // アコーディオン開閉
   const toggleExpand = (eventId: string) => {
     setExpandedEventId(expandedEventId === eventId ? null : eventId);
@@ -185,6 +194,19 @@ export default function AdminDashboardPage() {
               title="Supabase側で直接データを変更した場合など、最新の状態を再取得します"
             >
               🔄 再読み込み
+            </button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-orange-100 flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-500 font-medium">
+              イベントに紐づかない、いつでも使えるセルフチェック（
+              <span className="font-mono">/create-private-event</span>）の招待文：
+            </span>
+            <button
+              onClick={() => handleCopy(buildPrivateInvite(), 'private-invite')}
+              className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-2 rounded-xl transition-colors whitespace-nowrap"
+            >
+              {copiedId === 'private-invite' ? '✓ コピーしました' : '📋 招待文をコピー'}
             </button>
           </div>
         </header>
