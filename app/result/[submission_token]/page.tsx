@@ -356,6 +356,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     domainScores,
     preDomainScores,
     totalMean: Number(surveyData.total_mean),
+    seed: submission_token,
   });
 
   return (
