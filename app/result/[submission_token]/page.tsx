@@ -570,11 +570,11 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
                 📊 マイダッシュボードを開く
               </Link>
               <p className="text-xs text-gray-600 mt-5 leading-relaxed">
-                💡 次回からは、
+                💡 このあと届く確認メールにも、マイダッシュボードへのボタンが入っています。<span className="font-bold">次回はそのメールのボタンから開くのが一番確実</span>です。メールが見当たらない場合は、
                 <Link href="/mypage/login" className="text-purple-600 font-bold underline">
                   ログインページ
                 </Link>
-                から今回登録したメールアドレスでログインすれば、いつでもマイダッシュボードを確認できます。何度か記録を続けると、経時的な変化も見えてきます。
+                からも入れます。何度か記録を続けると、経時的な変化も見えてきます。
               </p>
             </div>
           )}
