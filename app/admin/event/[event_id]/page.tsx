@@ -17,10 +17,10 @@ const CustomAngleAxisTick = (props: any) => {
           <tspan
             key={index}
             x={x}
-            dy={isJapanese ? -4 : 15}
-            fontSize={isJapanese ? 13 : 9}
-            fontWeight={isJapanese ? 'bold' : 'normal'}
-            fill={isJapanese ? '#1e293b' : '#64748b'}
+            dy={isJapanese ? -4 : 16}
+            fontSize={isJapanese ? 16 : 11}
+            fontWeight={isJapanese ? 'bold' : 600}
+            fill={isJapanese ? '#f8fafc' : '#cbd5e1'}
           >
             {line}
           </tspan>
@@ -85,7 +85,7 @@ export default function AdminEventResultsPage({ params }: { params: Promise<{ ev
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-slate-400 font-bold animate-pulse text-sm">読み込み中...</div>
+        <div className="text-slate-300 font-bold animate-pulse text-sm">読み込み中...</div>
       </div>
     );
   }
@@ -116,7 +116,7 @@ export default function AdminEventResultsPage({ params }: { params: Promise<{ ev
       <div className="max-w-4xl mx-auto space-y-6">
 
         <div>
-          <Link href="/" className="text-xs text-slate-400 hover:text-slate-200 underline">
+          <Link href="/" className="text-xs text-slate-300 hover:text-slate-200 underline">
             ← 管理者ダッシュボードに戻る
           </Link>
         </div>
@@ -128,11 +128,11 @@ export default function AdminEventResultsPage({ params }: { params: Promise<{ ev
           <h1 className="text-xl md:text-2xl font-bold text-slate-100 tracking-tight">
             {event?.title || '(イベント名なし)'} の集団結果
           </h1>
-          <p className="text-xs text-slate-400 mt-1">合計 {surveys.length} 件の回答</p>
+          <p className="text-xs text-slate-300 mt-1">合計 {surveys.length} 件の回答</p>
         </div>
 
         {surveys.length === 0 ? (
-          <div className="bg-slate-800/90 p-8 rounded-2xl border border-slate-700/60 text-center text-slate-500 text-sm">
+          <div className="bg-slate-800/90 p-8 rounded-2xl border border-slate-700/60 text-center text-slate-300 text-sm">
             まだ回答がありません。
           </div>
         ) : (
@@ -148,9 +148,9 @@ export default function AdminEventResultsPage({ params }: { params: Promise<{ ev
                       domain={[0, 5]}
                       ticks={[1, 2, 3, 4, 5]}
                       stroke="none"
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
+                      tick={{ fontSize: 12, fontWeight: 700, fill: '#e2e8f0' }}
                     />
-                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '11px', paddingTop: '10px', color: '#cbd5e1' }} />
+                    <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '10px', color: '#e2e8f0' }} />
 
                     {preAvg && (
                       <Radar name={`事前平均 (N=${preAvg.count})`} dataKey="pre" stroke="#f59e0b" strokeWidth={2.5} fill="#f59e0b" fillOpacity={0.12} />
@@ -168,34 +168,34 @@ export default function AdminEventResultsPage({ params }: { params: Promise<{ ev
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 {preAvg && (
                   <div className="p-4 rounded-xl border border-amber-800/40 bg-amber-950/30 text-center">
-                    <div className="text-[10px] font-bold text-amber-400 mb-1">事前平均 (N={preAvg.count})</div>
+                    <div className="text-xs font-bold text-amber-300 mb-1">事前平均 (N={preAvg.count})</div>
                     <div className="text-2xl font-black text-amber-200">{preAvg.total_mean.toFixed(2)}</div>
-                    <div className="text-[10px] text-amber-500 mt-0.5">合計平均 {preAvg.total_sum.toFixed(1)}点</div>
+                    <div className="text-xs text-amber-300/80 mt-0.5">合計平均 {preAvg.total_sum.toFixed(1)}点</div>
                   </div>
                 )}
                 {postAvg && (
                   <div className="p-4 rounded-xl border border-emerald-800/40 bg-emerald-950/30 text-center">
-                    <div className="text-[10px] font-bold text-emerald-400 mb-1">事後平均 (N={postAvg.count})</div>
+                    <div className="text-xs font-bold text-emerald-300 mb-1">事後平均 (N={postAvg.count})</div>
                     <div className="text-2xl font-black text-emerald-200">{postAvg.total_mean.toFixed(2)}</div>
-                    <div className="text-[10px] text-emerald-500 mt-0.5">合計平均 {postAvg.total_sum.toFixed(1)}点</div>
+                    <div className="text-xs text-emerald-300/80 mt-0.5">合計平均 {postAvg.total_sum.toFixed(1)}点</div>
                   </div>
                 )}
                 {privateAvg && (
                   <div className="p-4 rounded-xl border border-purple-800/40 bg-purple-950/30 text-center">
-                    <div className="text-[10px] font-bold text-purple-400 mb-1">プライベート平均 (N={privateAvg.count})</div>
+                    <div className="text-xs font-bold text-purple-300 mb-1">プライベート平均 (N={privateAvg.count})</div>
                     <div className="text-2xl font-black text-purple-200">{privateAvg.total_mean.toFixed(2)}</div>
-                    <div className="text-[10px] text-purple-500 mt-0.5">合計平均 {privateAvg.total_sum.toFixed(1)}点</div>
+                    <div className="text-xs text-purple-300/80 mt-0.5">合計平均 {privateAvg.total_sum.toFixed(1)}点</div>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md">
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">個別回答一覧</h2>
+              <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">個別回答一覧</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-700 text-slate-400 font-medium">
+                    <tr className="border-b border-slate-700 text-slate-300 font-medium">
                       <th className="p-3">回答者 (ニックネーム)</th>
                       <th className="p-3">種別</th>
                       <th className="p-3 text-right">総合平均</th>
