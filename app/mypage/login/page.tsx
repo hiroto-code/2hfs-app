@@ -25,7 +25,11 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setMessage('エラーが発生しました: ' + error.message);
+      // 💡 診断しやすいよう、コンソールには詳細を、画面にはステータス/コードも含めて表示する
+      console.error('signInWithOtp error:', error);
+      const detail = error.message || error.name || 'unknown error';
+      const statusInfo = (error as any).status ? `(status: ${(error as any).status})` : '';
+      setMessage(`エラーが発生しました: ${detail} ${statusInfo}`.trim());
       setIsError(true);
     } else {
       setMessage('✨ ログインURLを記載したメールを送信しました！メールボックスをご確認ください。');
