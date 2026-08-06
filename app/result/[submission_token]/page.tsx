@@ -495,11 +495,6 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
             <p className="text-sm text-gray-700 leading-relaxed font-medium">
               {feedback.strengthText}
             </p>
-            {feedback.reflectionText && (
-              <p className="text-sm text-gray-700 leading-relaxed font-medium">
-                {feedback.reflectionText}
-              </p>
-            )}
             {feedback.changeText && (
               <p className="text-sm text-gray-700 leading-relaxed font-medium">
                 {feedback.changeText}

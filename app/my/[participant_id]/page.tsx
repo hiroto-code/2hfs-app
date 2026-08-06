@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { generateLifestyleAdvice, LIFESTYLE_ADVICE_MIN_RECORDS, type DomainKey } from '@/lib/feedback';
 
 // 💡 グラフの点を描画するカスタムコンポーネント
 const CustomDot = (props: any) => {
@@ -314,6 +315,31 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
     ? privateSurveys.reduce((sum, s) => sum + Number(s.total_mean || 0), 0) / privateSurveys.length
     : null;
 
+  // 💡 経時記録コメント（〇〇生活型）：一定件数以上たまったら、全記録の平均から
+  // 最も高く出ている領域を「生活型」として、ワンポイント・アドバイスを表示する
+  const lifestyleAdvice = (() => {
+    if (surveys.length < LIFESTYLE_ADVICE_MIN_RECORDS) return null;
+
+    const domainKeys: DomainKey[] = ['kaishoku', 'kaimin', 'kaido', 'kaisho', 'kairaku', 'kaisei'];
+    const domainFieldMap: Record<DomainKey, string> = {
+      kaishoku: 'domain_kaishoku',
+      kaimin: 'domain_kaimin',
+      kaido: 'domain_kaido',
+      kaisho: 'domain_kaisho',
+      kairaku: 'domain_kairaku',
+      kaisei: 'domain_kaisei',
+    };
+
+    const avgDomainScores = domainKeys.reduce((acc, key) => {
+      const field = domainFieldMap[key];
+      const sum = surveys.reduce((s, survey) => s + Number(survey[field] || 0), 0);
+      acc[key] = sum / surveys.length;
+      return acc;
+    }, {} as Record<DomainKey, number>);
+
+    return generateLifestyleAdvice(avgDomainScores, participantId);
+  })();
+
   // やり直しボタンの遷移先URLを判定する関数
   const getRetakeUrl = (survey: any) => {
     if (survey.isPrivate) {
@@ -352,6 +378,24 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
             <span>📋</span> プライベートイベントの回答をする
           </Link>
         </div>
+
+        {/* 💬 経時記録コメント（〇〇生活型） */}
+        {lifestyleAdvice && (
+          <div className="bg-white p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-100 rounded-full blur-3xl opacity-50 -z-10 pointer-events-none"></div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm">
+                {lifestyleAdvice.label}
+              </span>
+              <span className="text-[11px] text-gray-400 font-medium">
+                （これまでの記録の傾向から。診断ではありません）
+              </span>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed font-medium">
+              {lifestyleAdvice.advice}
+            </p>
+          </div>
+        )}
 
         {/* グラフエリア */}
         <div className="bg-white p-6 md:p-8 rounded-3xl border border-orange-100 shadow-md">
