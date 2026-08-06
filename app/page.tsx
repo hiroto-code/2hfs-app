@@ -128,7 +128,7 @@ export default function AdminDashboardPage() {
 
   // 参加者向け案内文のテンプレート（事前アンケートURLが埋め込み済み）
   const buildPreAnnouncement = (eventTitle: string, preUrl: string) =>
-    `【健幸度チェックのお願い🌿】\n\n` +
+    `【☘️Well-being尺度（健幸度）チェックのお願い🌿】\n\n` +
     `「${eventTitle}」にご参加いただく皆さまへ、\n` +
     `簡単な健幸度チェック（2HFS）にご協力をお願いします。\n\n` +
     `▼事前アンケート（所要時間 約1分）\n${preUrl}\n\n` +
@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
 
   // 参加者向け案内文のテンプレート（事後アンケートURLが埋め込み済み）
   const buildPostAnnouncement = (eventTitle: string, postUrl: string) =>
-    `【健幸度チェック（事後）のお願い🌿】\n\n` +
+    `【☘️Well-being尺度（健幸度）チェック（事後）のお願い🌿】\n\n` +
     `「${eventTitle}」にご参加いただきありがとうございました！\n` +
     `イベント前後での変化を見るため、事後アンケートへのご協力をお願いします。\n\n` +
     `▼事後アンケート（所要時間 約1分）\n${postUrl}\n\n` +
