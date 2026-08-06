@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // 💡 グラフの点を描画するカスタムコンポーネント
@@ -23,6 +23,8 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
   const { participant_id: rawId } = use(params);
   const participantId = decodeURIComponent(rawId || '');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const submissionTokenProof = searchParams.get('st');
 
   const [displayName, setDisplayName] = useState<string>('');
   const [accountEmail, setAccountEmail] = useState<string>('');
@@ -61,11 +63,31 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         return;
       }
 
+      // 💡 案内メールのリンクには、その回答固有のsubmission_token(推測不可能なUUID)を
+      // ?st= として付けている。回答した端末と異なる端末・ブラウザでメールを開いても、
+      // その値が本人のメールアドレスの回答と一致すればログインなしで通す。
+      // 他人がURLだけ真似ても、正しいsubmission_tokenを知らない限り通らない。
+      if (submissionTokenProof) {
+        const { data: matchedSurvey } = await supabase
+          .from('surveys')
+          .select('participant_id')
+          .eq('submission_token', submissionTokenProof)
+          .maybeSingle();
+
+        if (matchedSurvey?.participant_id?.toLowerCase() === participantId.toLowerCase()) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('supwell_user_email', participantId);
+          }
+          setAuthorized(true);
+          return;
+        }
+      }
+
       router.replace('/mypage/login');
     };
 
     checkAuth();
-  }, [participantId, router]);
+  }, [participantId, router, submissionTokenProof]);
 
   useEffect(() => {
     if (!authorized) return;

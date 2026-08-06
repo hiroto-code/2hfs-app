@@ -273,7 +273,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
           body: JSON.stringify({
             email: cleanEmail,
             displayName: nicknameToSave,
-            myPageUrl: `${window.location.origin}/my/${encodeURIComponent(cleanEmail)}`,
+            dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(cleanEmail)}?st=${submission_token}`,
           }),
         });
       } catch (emailErr) {

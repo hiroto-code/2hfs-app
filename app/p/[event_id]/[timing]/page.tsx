@@ -215,7 +215,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             body: JSON.stringify({
               email: formattedEmail,
               name: formattedName,
-              dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(formattedEmail)}`
+              dashboardUrl: `${window.location.origin}/my/${encodeURIComponent(formattedEmail)}?st=${submission_token}`
             }),
           });
         } catch (emailError) {
