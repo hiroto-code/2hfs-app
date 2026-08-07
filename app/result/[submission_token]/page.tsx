@@ -545,8 +545,9 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
               </form>
               {regError && <p className="text-xs text-rose-500 mt-3 font-bold bg-rose-50 p-2.5 rounded-xl border border-rose-100">{regError}</p>}
               
-              <p className="text-[11px] text-gray-400 mt-4 text-center">
-                ※すでにアカウントをお持ちの方は、同じアドレスを入力するとデータが統合されます。
+              <p className="text-xs text-gray-500 mt-4 text-center leading-relaxed">
+                ※すでにアカウントをお持ちの方は、同じアドレスを入力するとデータが統合されます。<br />
+                ※メールアドレスは結果の保存・ご案内のためにのみ使用し、研究目的で活用する場合は集計・匿名化した形で扱います。
               </p>
             </div>
           ) : (

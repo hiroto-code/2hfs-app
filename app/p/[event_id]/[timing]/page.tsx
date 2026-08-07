@@ -298,6 +298,14 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
                 onBlur={handleEmailBlur}
                 className="w-full mt-1 p-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-amber-400 focus:outline-none text-base text-gray-800 bg-orange-50/20 shadow-inner"
               />
+              <div className="mt-2 text-xs text-gray-600 leading-relaxed bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <p className="font-bold text-gray-700 mb-1">📋 ご入力にあたって</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>メールアドレスは、回答結果の保存とマイダッシュボードのご案内のためにのみ使用します。</li>
+                  <li>ご回答内容を研究目的で活用させていただく場合は、集計・匿名化した形で扱い、個人が特定されない形で使用します。</li>
+                  <li>回答は任意です。ご不明な点はイベント運営者までお問い合わせください。</li>
+                </ul>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-1">表示名・ニックネーム</label>
