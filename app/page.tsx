@@ -111,12 +111,28 @@ export default function AdminDashboardPage() {
   // イベント削除
   const handleDeleteEvent = async (id: string) => {
     if (!confirm('このイベントを削除してもよろしいですか？')) return;
-    const { error } = await supabase.from('events').delete().eq('id', id);
-    if (!error) {
-      fetchData();
-    } else {
+
+    // 💡 Supabaseは、RLS等で削除権限がない場合でも「0件削除して成功」という
+    // 応答を返すことがあり、エラーが出ないのに実際は削除されない、という
+    // 分かりにくい状態になりうる。.select()で削除された行を取得し、
+    // 0件だった場合は明示的にエラーとして扱う。
+    const { data, error } = await supabase.from('events').delete().eq('id', id).select();
+
+    if (error) {
       alert('削除に失敗しました: ' + error.message);
+      return;
     }
+
+    if (!data || data.length === 0) {
+      alert(
+        '削除できませんでした（0件削除）。\n\n' +
+        'エラーは出ていませんが、実際には削除が行われていません。' +
+        'Supabase側の権限設定（RLS）で、削除がブロックされている可能性があります。'
+      );
+      return;
+    }
+
+    fetchData();
   };
 
   // コピー処理
