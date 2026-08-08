@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
 import Link from 'next/link';
-import { generateFeedback, type DomainKey } from '@/lib/feedback';
+import { generateFeedback, generateGroupAverageNote, type DomainKey } from '@/lib/feedback';
 
 const CustomAngleAxisTick = (props: any) => {
   const { x, y, payload, textAnchor } = props;
@@ -359,6 +359,8 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
     seed: submission_token,
   });
 
+  const groupAverageNote = groupAvgData ? generateGroupAverageNote(submission_token) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 p-4 md:p-8 font-sans">
       <div className="max-w-3xl mx-auto">
@@ -480,6 +482,12 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
               </div>
             </div>
           </div>
+
+          {groupAverageNote && (
+            <p className="text-[11px] text-gray-400 leading-relaxed mt-4 text-center">
+              {groupAverageNote}
+            </p>
+          )}
         </div>
 
         {/* 💬 フィードバックカード（診断ではなく、振り返りのための気づき） */}
