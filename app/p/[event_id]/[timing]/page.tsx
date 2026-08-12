@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { domainQuestions, scaleOptions } from '@/lib/questions';
+import { type ExtraQuestion, EXTRA_LIKERT_SCALE } from '@/lib/extraQuestions';
 
 const domainStyles: Record<string, { bg: string; border: string; title: string }> = {
   kaishoku: { bg: 'bg-rose-50/60', border: 'border-rose-200', title: 'text-rose-800' },
@@ -29,6 +30,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   const [fetchingExisting, setFetchingExisting] = useState(false);
   const [hasExistingData, setHasExistingData] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [extraQuestions, setExtraQuestions] = useState<ExtraQuestion[]>([]);
+  const [extraAnswers, setExtraAnswers] = useState<{ [id: string]: string | number }>({});
+  const [step, setStep] = useState<1 | 2>(1);
 
   const isPost = timing === 'post';
   const isPrivate = timing === 'private';
@@ -83,6 +87,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         if (data.mood_score !== undefined && data.mood_score !== null) {
           setMood(Number(data.mood_score));
         }
+        if (data.extra_answers && typeof data.extra_answers === 'object') {
+          setExtraAnswers(data.extra_answers);
+        }
         setHasExistingData(true);
       }
     } catch (err) {
@@ -103,6 +110,24 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     }
   }, [event_id, timing]);
 
+  // 事後アンケート(post)の場合のみ、そのイベント固有の「追加質問」を取得する
+  useEffect(() => {
+    const fetchExtraQuestions = async () => {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id || '');
+      if (timing !== 'post' || !isUUID) {
+        setExtraQuestions([]);
+        return;
+      }
+      const { data } = await supabase
+        .from('events')
+        .select('extra_questions')
+        .eq('id', event_id)
+        .maybeSingle();
+      setExtraQuestions(Array.isArray(data?.extra_questions) ? data.extra_questions : []);
+    };
+    fetchExtraQuestions();
+  }, [event_id, timing]);
+
   // メールアドレス入力欄のフォーカスが外れた際にも自動検索
   const handleEmailBlur = () => {
     if (email.trim()) {
@@ -112,6 +137,10 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
   const handleScoreChange = (qIndex: number, val: number) => {
     setAnswers(prev => ({ ...prev, [qIndex]: val }));
+  };
+
+  const handleExtraAnswerChange = (id: string, value: string | number) => {
+    setExtraAnswers((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,6 +157,32 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       return;
     }
 
+    if (extraQuestions.length > 0) {
+      setStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    await submitToDatabase();
+  };
+
+  const handleExtraSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    for (const q of extraQuestions) {
+      if (!q.required) continue;
+      const val = extraAnswers[q.id];
+      if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+        setErrorMsg(`「${q.textJa}」にお答えください。`);
+        return;
+      }
+    }
+
+    await submitToDatabase();
+  };
+
+  const submitToDatabase = async () => {
     setLoading(true);
 
     try {
@@ -173,6 +228,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         domain_kaisho, domain_kairaku, domain_kaisei,
         total_sum, total_mean, submission_token,
         mood_score: mood,
+        extra_answers: extraQuestions.length > 0 ? extraAnswers : {},
       };
 
       // 既存データの削除（上書き用のリセット）
@@ -284,6 +340,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
           </p>
         </div>
 
+        {step === 1 && (
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           <div className="bg-white p-5 rounded-3xl shadow-md border border-orange-100 space-y-4">
             <div>
@@ -410,9 +467,124 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
             type="submit" disabled={loading}
             className={`w-full py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${submitBtnBg} ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
           >
-            {loading ? '送信中...' : hasExistingData ? '修正内容を上書き保存する 🌿' : isPrivate ? '記録を保存する 🌿' : isPost ? '事後アンケートを送信する ✨' : '事前アンケートを送信する 📋'}
+            {loading
+              ? '送信中...'
+              : extraQuestions.length > 0
+              ? '次へ（追加の質問があります） →'
+              : hasExistingData
+              ? '修正内容を上書き保存する 🌿'
+              : isPrivate
+              ? '記録を保存する 🌿'
+              : isPost
+              ? '事後アンケートを送信する ✨'
+              : '事前アンケートを送信する 📋'}
           </button>
         </form>
+        )}
+
+        {step === 2 && (
+          <form onSubmit={handleExtraSubmit} className="space-y-4 md:space-y-6">
+            <div className="bg-white p-5 md:p-6 rounded-3xl shadow-md border border-emerald-100 space-y-2">
+              <h2 className="text-lg font-bold text-emerald-800">追加の質問 📝</h2>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                今後の運営の参考とするための質問です。前ページの2HFSの回答と結びつけて使用することはありません。
+              </p>
+            </div>
+
+            {extraQuestions.map((q) => (
+              <div key={q.id} className="bg-white p-5 rounded-3xl shadow-sm border border-emerald-50 space-y-3">
+                <p className="font-bold text-gray-900 text-base leading-snug">
+                  {q.textJa} {q.required !== false && <span className="text-rose-500">*</span>}
+                </p>
+
+                {q.type === 'likert' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 sm:gap-2 pt-1">
+                    {EXTRA_LIKERT_SCALE.map((opt) => {
+                      const isSelected = extraAnswers[q.id] === opt.val;
+                      return (
+                        <button
+                          key={opt.val}
+                          type="button"
+                          onClick={() => handleExtraAnswerChange(q.id, opt.val)}
+                          className={`flex flex-row sm:flex-col items-center sm:justify-start gap-3 sm:gap-0 px-4 py-3.5 sm:p-2.5 rounded-2xl border transition-all text-left sm:text-center min-h-[48px] active:scale-95 ${
+                            isSelected
+                              ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md transform scale-[1.02]'
+                              : 'bg-white/80 text-gray-800 border-gray-200/80 hover:bg-white'
+                          }`}
+                        >
+                          <span className="text-lg font-black leading-none sm:mb-1.5 flex-shrink-0 w-7 text-center">{opt.val}</span>
+                          <span className={`text-sm font-bold leading-snug block w-full break-words ${isSelected ? 'text-white' : 'text-gray-800'}`}>{opt.ja}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {q.type === 'choice' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {(q.options || []).map((opt) => {
+                      const isSelected = extraAnswers[q.id] === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => handleExtraAnswerChange(q.id, opt)}
+                          className={`px-4 py-3 rounded-2xl border text-sm font-bold transition-all min-h-[48px] active:scale-95 ${
+                            isSelected
+                              ? 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white border-emerald-600 shadow-md'
+                              : 'bg-white/80 text-gray-800 border-gray-200/80 hover:bg-white'
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {q.type === 'text' && (
+                  <textarea
+                    value={(extraAnswers[q.id] as string) || ''}
+                    onChange={(e) => handleExtraAnswerChange(q.id, e.target.value)}
+                    rows={3}
+                    className="w-full p-3 border border-emerald-200 rounded-2xl focus:ring-2 focus:ring-emerald-400 focus:outline-none text-base text-gray-800 bg-emerald-50/20 shadow-inner"
+                  />
+                )}
+
+                {q.type === 'name' && (
+                  <input
+                    type="text"
+                    value={(extraAnswers[q.id] as string) || ''}
+                    onChange={(e) => handleExtraAnswerChange(q.id, e.target.value)}
+                    className="w-full p-3 border border-emerald-200 rounded-2xl focus:ring-2 focus:ring-emerald-400 focus:outline-none text-base text-gray-800 bg-emerald-50/20 shadow-inner"
+                  />
+                )}
+              </div>
+            ))}
+
+            {errorMsg && (
+              <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl border border-rose-200 text-sm font-bold text-center shadow-sm">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="py-4 px-5 rounded-2xl font-bold text-gray-500 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 transition-all"
+              >
+                ← 戻る
+              </button>
+              <button
+                type="submit" disabled={loading}
+                className={`flex-1 py-4 rounded-2xl font-bold text-white text-base md:text-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] ${submitBtnBg} ${loading ? 'opacity-50 cursor-not-allowed hover:scale-100' : ''}`}
+              >
+                {loading ? '送信中...' : hasExistingData ? '修正内容を上書き保存する 🌿' : '事後アンケートを送信する ✨'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

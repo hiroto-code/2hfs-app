@@ -438,6 +438,12 @@ export default function AdminDashboardPage() {
                       >
                         📊 集団結果を見る
                       </Link>
+                      <Link
+                        href={`/admin/event/${ev.id}/questions`}
+                        className="text-xs font-bold text-white bg-teal-600 hover:bg-teal-500 flex items-center gap-1 py-1.5 px-3 rounded-xl transition-colors shadow-sm"
+                      >
+                        📝 追加質問を編集
+                      </Link>
                       <button
                         onClick={() => toggleExpand(ev.id)}
                         className="text-xs font-bold text-orange-600 hover:text-orange-800 flex items-center gap-1 py-1.5 px-3 rounded-xl hover:bg-orange-50 transition-colors"
