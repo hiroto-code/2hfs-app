@@ -118,13 +118,18 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('events')
       .update({ extra_questions: questions })
-      .eq('id', event_id);
+      .eq('id', event_id)
+      .select();
     setSaving(false);
     if (error) {
       alert('保存に失敗しました: ' + error.message);
+      return;
+    }
+    if (!data || data.length === 0) {
+      alert('保存できませんでした（0件更新）。\n\nエラーは出ていませんが、実際には保存が行われていません。Supabase側の権限設定（RLS）で、eventsテーブルへの更新がブロックされている可能性があります。');
       return;
     }
     setSaved(true);
