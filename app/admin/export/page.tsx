@@ -58,13 +58,26 @@ export default function AdminExportPage() {
     }
   };
 
-  // ユニークなイベントIDリスト
+  // ユニークなイベントIDリスト（表示名はevents側のtitleを使う）
   const uniqueEventIds = useMemo(() => {
     const ids = surveys
       .map((s) => s.event_id)
       .filter((id): id is string => Boolean(id) && id !== 'private');
     return Array.from(new Set(ids));
   }, [surveys]);
+
+  const eventOptions = useMemo(() => {
+    return uniqueEventIds
+      .map((id) => {
+        const ev = events.find((e) => e.id === id);
+        const targetDate = ev?.event_date || ev?.date;
+        return {
+          id,
+          label: ev ? `${ev.title}${targetDate ? `（${targetDate}）` : ''}` : id,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label, 'ja'));
+  }, [uniqueEventIds, events]);
 
   // フィルタリング処理
   const filteredSurveys = useMemo(() => {
@@ -465,16 +478,16 @@ export default function AdminExportPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* イベント選択 */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">イベントID</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">イベント名</label>
               <select
                 value={selectedEvent}
                 onChange={(e) => setSelectedEvent(e.target.value)}
                 className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               >
                 <option value="all">すべてのイベント</option>
-                {uniqueEventIds.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
+                {eventOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -609,7 +622,7 @@ export default function AdminExportPage() {
                     <th className="p-3">日時</th>
                     <th className="p-3">種別</th>
                     <th className="p-3">表示名 / ID</th>
-                    <th className="p-3">イベントID</th>
+                    <th className="p-3">イベント名</th>
                     <th className="p-3 text-right">総合平均</th>
                     <th className="p-3 text-center">詳細</th>
                   </tr>
@@ -644,7 +657,9 @@ export default function AdminExportPage() {
                           <div className="text-slate-200 font-medium">{s.display_name || 'ゲスト'}</div>
                           <div className="text-[10px] text-slate-300">{s.participant_id}</div>
                         </td>
-                        <td className="p-3 text-slate-300">{s.event_id || '-'}</td>
+                        <td className="p-3 text-slate-300">
+                          {s.event_id ? (events.find((e) => e.id === s.event_id)?.title || s.event_id) : '-'}
+                        </td>
                         <td className="p-3 text-right font-bold text-slate-200">
                           {s.total_mean ? Number(s.total_mean).toFixed(2) : '-'} 点
                         </td>
