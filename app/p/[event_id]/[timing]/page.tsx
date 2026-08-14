@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { domainQuestions, scaleOptions } from '@/lib/questions';
 import { type ExtraQuestion, EXTRA_LIKERT_SCALE } from '@/lib/extraQuestions';
+import { getOrCreateResearchParticipantId } from '@/lib/participants';
 
 const domainStyles: Record<string, { bg: string; border: string; title: string }> = {
   kaishoku: { bg: 'bg-rose-50/60', border: 'border-rose-200', title: 'text-rose-800' },
@@ -212,10 +213,19 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       const submission_token = crypto.randomUUID();
 
+      // メールアドレス→研究用IDを解決（失敗しても回答自体は止めない。取り漏れは後から補填可能）
+      let research_participant_id: string | null = null;
+      try {
+        research_participant_id = await getOrCreateResearchParticipantId(formattedEmail, formattedName);
+      } catch (linkError) {
+        console.error('研究用ID解決エラー:', linkError);
+      }
+
       const payload = {
-        event_id: dbEventId, 
+        event_id: dbEventId,
         participant_id: formattedEmail,
         display_name: formattedName,
+        research_participant_id,
         timing_type: timing, 
         display_language: 'bilingual',
         answers,
