@@ -18,6 +18,7 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [responses, setResponses] = useState<{ id: string; display_name: string | null; answers: any; created_at: string }[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,6 +33,14 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
         setEventTitle(data.title || '');
         setQuestions(Array.isArray(data.extra_questions) ? data.extra_questions : []);
       }
+
+      const { data: responseData } = await supabase
+        .from('extra_question_responses')
+        .select('id, display_name, answers, created_at')
+        .eq('event_id', event_id)
+        .order('created_at', { ascending: false });
+      setResponses(responseData || []);
+
       setLoading(false);
     };
     fetchData();
@@ -295,6 +304,36 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
           >
             {saving ? '保存中...' : saved ? '✓ 保存しました' : '保存する'}
           </button>
+        </div>
+
+        <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md">
+          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">
+            回答状況（追加質問のみURL経由の回答, {responses.length}件）
+          </h2>
+          {responses.length === 0 ? (
+            <p className="text-xs text-slate-500 py-4 text-center">まだ回答がありません。</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-700 text-slate-300 font-medium">
+                    <th className="p-3">氏名 / 表示名</th>
+                    <th className="p-3">回答日時</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {responses.map((r) => (
+                    <tr key={r.id}>
+                      <td className="p-3 text-slate-200 font-medium">{r.display_name || '(未記入)'}</td>
+                      <td className="p-3 text-slate-400">
+                        {new Date(r.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
