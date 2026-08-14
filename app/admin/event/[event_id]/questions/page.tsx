@@ -311,33 +311,97 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
           </button>
         </div>
 
-        <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md">
-          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">
-            回答状況（追加質問のみURL経由の回答, {responses.length}件）
+        <div className="bg-slate-800/90 p-6 rounded-2xl border border-slate-700/60 shadow-md space-y-5">
+          <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            回答結果（匿名集計, 追加質問のみURL経由, {responses.length}件）
           </h2>
+
           {responses.length === 0 ? (
             <p className="text-xs text-slate-500 py-4 text-center">まだ回答がありません。</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-700 text-slate-300 font-medium">
-                    <th className="p-3">氏名 / 表示名</th>
-                    <th className="p-3">回答日時</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/50">
-                  {responses.map((r) => (
-                    <tr key={r.id}>
-                      <td className="p-3 text-slate-200 font-medium">{r.display_name || '(未記入)'}</td>
-                      <td className="p-3 text-slate-400">
-                        {new Date(r.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            questions.map((q) => {
+              if (q.type === 'name') return null; // 氏名は匿名集計の対象外
+
+              const values = responses
+                .map((r) => (r.answers ? r.answers[q.id] : undefined))
+                .filter((v) => v !== undefined && v !== null && v !== '');
+
+              if (q.type === 'likert') {
+                const nums = values.map(Number).filter((n) => !isNaN(n));
+                const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+                const counts = [1, 2, 3, 4, 5].map((v) => nums.filter((n) => n === v).length);
+                const max = Math.max(1, ...counts);
+                return (
+                  <div key={q.id} className="border-t border-slate-700/60 pt-4">
+                    <p className="text-sm font-bold text-slate-200 mb-2">{q.textJa}</p>
+                    <p className="text-xs text-slate-400 mb-2">
+                      平均 {avg !== null ? avg.toFixed(2) : '-'} / 5（回答 {nums.length}件）
+                    </p>
+                    <div className="space-y-1">
+                      {[1, 2, 3, 4, 5].map((v, i) => (
+                        <div key={v} className="flex items-center gap-2 text-[11px] text-slate-400">
+                          <span className="w-3">{v}</span>
+                          <div className="flex-1 bg-slate-700/50 rounded h-3 overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-full"
+                              style={{ width: `${(counts[i] / max) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-6 text-right">{counts[i]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (q.type === 'choice') {
+                const counts: Record<string, number> = {};
+                for (const opt of q.options || []) counts[opt] = 0;
+                for (const v of values) {
+                  const key = String(v);
+                  counts[key] = (counts[key] || 0) + 1;
+                }
+                const max = Math.max(1, ...Object.values(counts));
+                return (
+                  <div key={q.id} className="border-t border-slate-700/60 pt-4">
+                    <p className="text-sm font-bold text-slate-200 mb-2">{q.textJa}</p>
+                    <div className="space-y-1">
+                      {Object.entries(counts).map(([opt, count]) => (
+                        <div key={opt} className="flex items-center gap-2 text-[11px] text-slate-400">
+                          <span className="w-28 truncate">{opt}</span>
+                          <div className="flex-1 bg-slate-700/50 rounded h-3 overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-full"
+                              style={{ width: `${(count / max) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-6 text-right">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              // text
+              return (
+                <div key={q.id} className="border-t border-slate-700/60 pt-4">
+                  <p className="text-sm font-bold text-slate-200 mb-2">{q.textJa}</p>
+                  {values.length === 0 ? (
+                    <p className="text-xs text-slate-500">回答なし</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {values.map((v, i) => (
+                        <li key={i} className="text-xs text-slate-300 bg-slate-900/60 rounded-lg p-2.5 leading-relaxed">
+                          {String(v)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
