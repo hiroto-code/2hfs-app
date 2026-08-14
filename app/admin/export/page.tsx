@@ -463,9 +463,9 @@ export default function AdminExportPage() {
           <button
             onClick={handleDownloadCSV}
             disabled={loading || selectedSurveys.length === 0}
-            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-3 rounded-xl shadow transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-7 py-4 rounded-xl shadow-lg ring-2 ring-emerald-400/50 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <span>📥</span> CSVダウンロード（{selectedSurveys.length}件選択中）
+            <span className="text-lg">📥</span> CSVダウンロード（{selectedSurveys.length}件選択中）
           </button>
         </div>
 
