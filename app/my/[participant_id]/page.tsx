@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { generateLifestyleAdvice, LIFESTYLE_ADVICE_MIN_RECORDS, type DomainKey } from '@/lib/feedback';
+import { getOrCreateResearchParticipantId } from '@/lib/participants';
 
 // 💡 グラフの点を描画するカスタムコンポーネント
 const CustomDot = (props: any) => {
@@ -126,14 +127,35 @@ export default function MyDashboardPage({ params }: { params: Promise<{ particip
         setDisplayName(resolvedName);
         setAccountEmail(currentEmail);
 
-        let query = supabase.from('surveys').select('*');
-        if (currentEmail) {
-          query = query.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`);
-        } else {
-          query = query.eq('participant_id', participantId);
+        // 🆕 メールアドレス→研究用IDを解決し、その経路でも記録を取得する。
+        // 従来のメールアドレス直接検索は「安全網」として必ず並行実行し、
+        // 結果をマージすることで、万一研究用IDの紐付けに漏れがあっても
+        // 経時記録が見えなくなることがないようにする。
+        let legacyQuery = supabase.from('surveys').select('*');
+        legacyQuery = currentEmail
+          ? legacyQuery.or(`participant_id.eq.${participantId},participant_id.eq.${currentEmail}`)
+          : legacyQuery.eq('participant_id', participantId);
+        const { data: legacyLogs, error: surveyError } = await legacyQuery;
+
+        let researchLogs: any[] = [];
+        try {
+          const emailForLookup = currentEmail || participantId;
+          const researchParticipantId = await getOrCreateResearchParticipantId(emailForLookup);
+          const { data } = await supabase
+            .from('surveys')
+            .select('*')
+            .eq('research_participant_id', researchParticipantId);
+          researchLogs = data || [];
+        } catch (linkError) {
+          console.error('研究用ID経由の記録取得に失敗（従来の方法のみで表示を継続）:', linkError);
         }
 
-        const { data: surveyLogs, error: surveyError } = await query;
+        const mergedMap = new Map<string, any>();
+        [...(legacyLogs || []), ...researchLogs].forEach((s) => {
+          const key = s.id || s.submission_token;
+          if (key) mergedMap.set(key, s);
+        });
+        const surveyLogs = Array.from(mergedMap.values());
 
         if (!surveyError && surveyLogs) {
           const eventIds = Array.from(new Set(surveyLogs.map((s) => s.event_id).filter(Boolean)));
