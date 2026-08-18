@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
 import Link from 'next/link';
 import { generateFeedback, generateGroupAverageNote, type DomainKey } from '@/lib/feedback';
+import { getOrCreateResearchParticipantId } from '@/lib/participants';
 
 const CustomAngleAxisTick = (props: any) => {
   const { x, y, payload, textAnchor } = props;
@@ -224,6 +225,16 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
       if (profileError) throw profileError;
 
+      // 🆕 登録時に確定したメールアドレスで、研究用IDを解決・確定させる。
+      // ここは本人が明示的に確認・入力したタイミングなので、以後この人の記録を
+      // 一貫して同じ研究用IDに束ねるための「確定ポイント」として使う。
+      let researchParticipantId: string | null = null;
+      try {
+        researchParticipantId = await getOrCreateResearchParticipantId(cleanEmail, nicknameToSave);
+      } catch (linkError) {
+        console.error('研究用ID解決エラー:', linkError);
+      }
+
       await supabase
         .from('surveys')
         .delete()
@@ -234,7 +245,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
 
       const { error: surveyError } = await supabase
         .from('surveys')
-        .update({ participant_id: cleanEmail })
+        .update({ participant_id: cleanEmail, research_participant_id: researchParticipantId })
         .eq('submission_token', submission_token);
 
       if (surveyError) throw surveyError;
@@ -258,7 +269,7 @@ export default function ResultPage({ params }: { params: Promise<{ submission_to
             if (!existing) {
               await supabase
                 .from('surveys')
-                .update({ participant_id: cleanEmail })
+                .update({ participant_id: cleanEmail, research_participant_id: researchParticipantId })
                 .eq('id', oldItem.id);
             }
           }
