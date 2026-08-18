@@ -356,6 +356,7 @@ export default function AdminExportPage() {
     const headers = [
       '回答日時',
       'イベントID',
+      'イベント名',
       'タイミング',
       'メールアドレス',
       '表示名',
@@ -364,7 +365,7 @@ export default function AdminExportPage() {
       '快食',
       '快眠',
       '快動',
-      '快調',
+      '快笑',
       '快楽',
       '快生',
       ...Array.from({ length: 18 }, (_, i) => `Q${i + 1}`)
@@ -374,6 +375,7 @@ export default function AdminExportPage() {
       const createdAt = s.created_at ? formatDateTimeJST(s.created_at) : '';
       const timingMap: Record<string, string> = { pre: '事前', post: '事後', private: 'プライベート' };
       const timingLabel = timingMap[s.timing_type] || s.timing_type || '';
+      const eventTitle = s.event_id ? (events.find((e) => e.id === s.event_id)?.title || '') : '';
 
       const qAnswers = Array.from({ length: 18 }, (_, i) => {
         if (s.answers && s.answers[i] !== undefined) return s.answers[i];
@@ -384,6 +386,7 @@ export default function AdminExportPage() {
       return [
         `"${createdAt}"`,
         `"${s.event_id || ''}"`,
+        `"${eventTitle}"`,
         `"${timingLabel}"`,
         `"${s.participant_id || ''}"`,
         `"${s.display_name || ''}"`,
@@ -407,6 +410,79 @@ export default function AdminExportPage() {
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `wellbeing_data_${selectedEvent}_${selectedTiming}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 研究用CSVダウンロード処理（個人情報を含まない版：メールアドレス・表示名・submission_tokenを含めない）
+  const handleDownloadResearchCSV = () => {
+    if (selectedSurveys.length === 0) {
+      alert('出力するデータを選択してください。');
+      return;
+    }
+
+    const headers = [
+      '回答日時',
+      'イベント名',
+      'タイミング',
+      'research_participant_id',
+      '総合平均点',
+      '総合合計点',
+      '快食',
+      '快眠',
+      '快動',
+      '快笑',
+      '快楽',
+      '快生',
+      ...Array.from({ length: 18 }, (_, i) => `Q${i + 1}`),
+      'mood_score',
+      'extra_answers',
+    ];
+
+    const rows = selectedSurveys.map((s) => {
+      const createdAt = s.created_at ? formatDateTimeJST(s.created_at) : '';
+      const timingMap: Record<string, string> = { pre: '事前', post: '事後', private: 'プライベート' };
+      const timingLabel = timingMap[s.timing_type] || s.timing_type || '';
+      const eventTitle = s.event_id ? (events.find((e) => e.id === s.event_id)?.title || '') : '';
+
+      const qAnswers = Array.from({ length: 18 }, (_, i) => {
+        if (s.answers && s.answers[i] !== undefined) return s.answers[i];
+        if (s[`q${i + 1}`] !== undefined) return s[`q${i + 1}`];
+        return '';
+      });
+
+      const extraAnswersJson = s.extra_answers && Object.keys(s.extra_answers).length > 0
+        ? JSON.stringify(s.extra_answers).replace(/"/g, '""')
+        : '';
+
+      return [
+        `"${createdAt}"`,
+        `"${eventTitle}"`,
+        `"${timingLabel}"`,
+        `"${s.research_participant_id || ''}"`,
+        s.total_mean ? Number(s.total_mean).toFixed(2) : '',
+        s.total_sum ?? '',
+        s.domain_kaishoku ? Number(s.domain_kaishoku).toFixed(2) : '',
+        s.domain_kaimin ? Number(s.domain_kaimin).toFixed(2) : '',
+        s.domain_kaido ? Number(s.domain_kaido).toFixed(2) : '',
+        s.domain_kaisho ? Number(s.domain_kaisho).toFixed(2) : '',
+        s.domain_kairaku ? Number(s.domain_kairaku).toFixed(2) : '',
+        s.domain_kaisei ? Number(s.domain_kaisei).toFixed(2) : '',
+        ...qAnswers,
+        s.mood_score ?? '',
+        `"${extraAnswersJson}"`,
+      ].join(',');
+    });
+
+    const csvContent = '﻿' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const dateStr = new Date().toISOString().split('T')[0];
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `wellbeing_research_data_${selectedEvent}_${selectedTiming}_${dateStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -460,13 +536,23 @@ export default function AdminExportPage() {
             </p>
           </div>
 
-          <button
-            onClick={handleDownloadCSV}
-            disabled={loading || selectedSurveys.length === 0}
-            className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-7 py-4 rounded-xl shadow-lg ring-2 ring-emerald-400/50 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <span className="text-lg">📥</span> CSVダウンロード（{selectedSurveys.length}件選択中）
-          </button>
+          <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleDownloadCSV}
+              disabled={loading || selectedSurveys.length === 0}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-7 py-4 rounded-xl shadow-lg ring-2 ring-emerald-400/50 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="text-lg">📥</span> CSVダウンロード（{selectedSurveys.length}件選択中）
+            </button>
+            <button
+              onClick={handleDownloadResearchCSV}
+              disabled={loading || selectedSurveys.length === 0}
+              title="メールアドレス・表示名・submission_tokenを含まない、研究用のCSVです"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 py-4 rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="text-lg">🔬</span> 研究用CSV（個人情報なし）
+            </button>
+          </div>
         </div>
 
         {/* フィルターパネル */}
