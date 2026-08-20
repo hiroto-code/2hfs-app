@@ -352,6 +352,9 @@ export default function AdminExportPage() {
       alert('出力するデータを選択してください。');
       return;
     }
+    if (!confirm(`選択した${selectedSurveys.length}件を、管理者用CSVとしてダウンロードします。よろしいですか？`)) {
+      return;
+    }
 
     const headers = [
       '回答日時',
@@ -419,6 +422,9 @@ export default function AdminExportPage() {
   const handleDownloadResearchCSV = () => {
     if (selectedSurveys.length === 0) {
       alert('出力するデータを選択してください。');
+      return;
+    }
+    if (!confirm(`選択した${selectedSurveys.length}件を、研究用CSV（個人情報なし）としてダウンロードします。よろしいですか？`)) {
       return;
     }
 
