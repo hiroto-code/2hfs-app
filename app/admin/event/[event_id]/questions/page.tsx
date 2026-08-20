@@ -34,12 +34,16 @@ export default function EditExtraQuestionsPage({ params }: { params: Promise<{ e
         setQuestions(Array.isArray(data.extra_questions) ? data.extra_questions : []);
       }
 
-      const { data: responseData } = await supabase
-        .from('extra_question_responses')
-        .select('id, display_name, answers, created_at')
-        .eq('event_id', event_id)
-        .order('created_at', { ascending: false });
-      setResponses(responseData || []);
+      // extra_question_responsesはRLSでSELECTを許可していないため、
+      // service_roleキーを使う管理者用APIルート経由で取得する
+      try {
+        const res = await fetch(`/api/admin/extra-responses?event_id=${event_id}`);
+        const json = await res.json();
+        setResponses(res.ok ? (json.data || []) : []);
+      } catch (err) {
+        console.error('回答一覧の取得エラー:', err);
+        setResponses([]);
+      }
 
       setLoading(false);
     };

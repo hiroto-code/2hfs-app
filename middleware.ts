@@ -25,7 +25,7 @@ export function middleware(req: NextRequest) {
   });
 }
 
-// ミドルウェアを適用するURLを指定（トップページ ＋ 管理者ページ配下すべて）
+// ミドルウェアを適用するURLを指定（トップページ ＋ 管理者ページ配下 ＋ 管理者用APIすべて）
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/', '/admin/:path*', '/api/admin/:path*'],
 };
