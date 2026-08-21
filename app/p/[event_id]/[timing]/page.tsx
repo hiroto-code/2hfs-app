@@ -271,9 +271,23 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
       }
 
       // ===== ⬇メール送信処理（マイページURLを /my/メールアドレス に修正） =====
-      // 💡 新規回答の時だけ送る。既存データの「修正して上書き」では再送しない
-      // （同じ人が再訪問して上書きするたびに案内メールが届くのを防ぐため）
-      if (!hasExistingData) {
+      // 💡 「このイベント・このタイミングに前回の回答があるか」ではなく、
+      // 「このメールアドレスで、直近30日以内に何かしら回答した実績があるか」で判定する。
+      // プライベート自己チェックは毎回新しいevent_idが発行される仕組みのため、
+      // 前者の判定だと同じ人が繰り返し使っても常に「初回」扱いになり、
+      // 毎回ご案内メールが届いてしまっていた。
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentSubmissions } = await supabase
+        .from('surveys')
+        .select('id')
+        .eq('participant_id', formattedEmail)
+        .neq('submission_token', submission_token)
+        .gte('created_at', thirtyDaysAgo)
+        .limit(1);
+
+      const hasRecentSubmission = !!(recentSubmissions && recentSubmissions.length > 0);
+
+      if (!hasRecentSubmission) {
         try {
           await fetch('/api/send-email', {
             method: 'POST',
