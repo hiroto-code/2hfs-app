@@ -34,6 +34,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
   const [extraQuestions, setExtraQuestions] = useState<ExtraQuestion[]>([]);
   const [extraAnswers, setExtraAnswers] = useState<{ [id: string]: string | number }>({});
   const [step, setStep] = useState<1 | 2>(1);
+  const [researchConsent, setResearchConsent] = useState(false);
 
   const isPost = timing === 'post';
   const isPrivate = timing === 'private';
@@ -104,6 +105,9 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
     const savedEmail = localStorage.getItem('supwell_user_email');
     const savedName = localStorage.getItem('supwell_user_name');
     if (savedName) setDisplayName(savedName);
+
+    // 研究利用の同意は「前回の選択」を初期表示として復元する（毎回チェック欄は目に入る位置に置く）
+    setResearchConsent(localStorage.getItem('supwell_research_consent') === 'true');
 
     if (savedEmail) {
       setEmail(savedEmail);
@@ -192,6 +196,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
 
       localStorage.setItem('supwell_user_email', formattedEmail);
       localStorage.setItem('supwell_user_name', formattedName);
+      localStorage.setItem('supwell_research_consent', researchConsent ? 'true' : 'false');
 
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id || '');
       const dbEventId = isUUID ? event_id : null;
@@ -239,6 +244,7 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
         total_sum, total_mean, submission_token,
         mood_score: mood,
         extra_answers: extraQuestions.length > 0 ? extraAnswers : {},
+        research_consent: researchConsent,
       };
 
       // 既存データの削除（上書き用のリセット）
@@ -480,6 +486,27 @@ export default function SurveyPage({ params }: { params: Promise<{ event_id: str
               </div>
             );
           })}
+
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+            <p className="text-sm font-bold text-gray-800 mb-1">研究・活動改善へのデータ利用について</p>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+              いただいた回答は、氏名・メールアドレスなどの個人情報を取り除き、集計・匿名化した形で、Well-beingに関する研究や活動の改善に役立てさせていただく場合があります。
+            </p>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={researchConsent}
+                onChange={(e) => setResearchConsent(e.target.checked)}
+                className="mt-0.5 w-5 h-5 flex-shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-400"
+              />
+              <span className="text-sm font-medium text-gray-800 leading-snug">
+                上記に同意します（この回答を、個人が特定されない集計・匿名化データとして利用いただいて構いません）
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+              ※チェックは任意です。同意されない場合も、回答結果とマイダッシュボードは通常どおりご利用いただけます。
+            </p>
+          </div>
 
           {errorMsg && (
             <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl border border-rose-200 text-sm font-bold text-center shadow-sm">

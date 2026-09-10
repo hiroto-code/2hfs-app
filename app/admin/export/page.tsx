@@ -363,6 +363,7 @@ export default function AdminExportPage() {
       'タイミング',
       'メールアドレス',
       '表示名',
+      '研究同意',
       '総合平均点',
       '総合合計点',
       '快食',
@@ -393,6 +394,7 @@ export default function AdminExportPage() {
         `"${timingLabel}"`,
         `"${s.participant_id || ''}"`,
         `"${s.display_name || ''}"`,
+        s.research_consent ? 'はい' : 'いいえ',
         s.total_mean ? Number(s.total_mean).toFixed(2) : '',
         s.total_sum ?? '',
         s.domain_kaishoku ? Number(s.domain_kaishoku).toFixed(2) : '',
@@ -424,7 +426,20 @@ export default function AdminExportPage() {
       alert('出力するデータを選択してください。');
       return;
     }
-    if (!confirm(`選択した${selectedSurveys.length}件を、研究用CSV（個人情報なし）としてダウンロードします。よろしいですか？`)) {
+
+    // 研究利用に同意した回答のみを対象にする
+    const consentedSurveys = selectedSurveys.filter((s) => s.research_consent === true);
+    const excludedCount = selectedSurveys.length - consentedSurveys.length;
+
+    if (consentedSurveys.length === 0) {
+      alert('選択した中に、研究利用に同意した回答がありません。');
+      return;
+    }
+
+    const confirmMsg = excludedCount > 0
+      ? `研究利用に同意した ${consentedSurveys.length} 件を出力します（同意なしの ${excludedCount} 件は除外されます）。よろしいですか？`
+      : `研究利用に同意した ${consentedSurveys.length} 件を、研究用CSV（個人情報なし）として出力します。よろしいですか？`;
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -446,7 +461,7 @@ export default function AdminExportPage() {
       'extra_answers',
     ];
 
-    const rows = selectedSurveys.map((s) => {
+    const rows = consentedSurveys.map((s) => {
       const createdAt = s.created_at ? formatDateTimeJST(s.created_at) : '';
       const timingMap: Record<string, string> = { pre: '事前', post: '事後', private: 'プライベート' };
       const timingLabel = timingMap[s.timing_type] || s.timing_type || '';

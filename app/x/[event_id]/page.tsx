@@ -13,8 +13,11 @@ export default function ExtraOnlyPage({ params }: { params: Promise<{ event_id: 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [researchConsent, setResearchConsent] = useState(false);
 
   useEffect(() => {
+    setResearchConsent(localStorage.getItem('supwell_research_consent') === 'true');
+
     const fetchData = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -52,10 +55,13 @@ export default function ExtraOnlyPage({ params }: { params: Promise<{ event_id: 
       const nameQuestion = questions.find((q) => q.type === 'name');
       const displayName = nameQuestion ? (answers[nameQuestion.id] as string) || '' : '';
 
+      localStorage.setItem('supwell_research_consent', researchConsent ? 'true' : 'false');
+
       const { error } = await supabase.from('extra_question_responses').insert({
         event_id,
         display_name: displayName.trim() || null,
         answers,
+        research_consent: researchConsent,
       });
 
       if (error) throw new Error(error.message);
@@ -181,6 +187,27 @@ export default function ExtraOnlyPage({ params }: { params: Promise<{ event_id: 
               )}
             </div>
           ))}
+
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+            <p className="text-sm font-bold text-gray-800 mb-1">研究・活動改善へのデータ利用について</p>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+              いただいた回答は、氏名などの個人情報を取り除き、集計・匿名化した形で、研究や活動の改善に役立てさせていただく場合があります。
+            </p>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={researchConsent}
+                onChange={(e) => setResearchConsent(e.target.checked)}
+                className="mt-0.5 w-5 h-5 flex-shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-400"
+              />
+              <span className="text-sm font-medium text-gray-800 leading-snug">
+                上記に同意します（この回答を、個人が特定されない集計・匿名化データとして利用いただいて構いません）
+              </span>
+            </label>
+            <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+              ※チェックは任意です。同意されない場合も、送信は通常どおり行えます。
+            </p>
+          </div>
 
           {errorMsg && (
             <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl border border-rose-200 text-sm font-bold text-center shadow-sm">
